@@ -3,9 +3,9 @@ import Papa from 'papaparse';
 import { 
   AlertTriangle, ShieldCheck, Activity, Globe, Link as LinkIcon, 
   TrendingUp, Search, BarChart3, ListFilter, ShieldAlert, FileText, 
-  BookOpen, Network, Zap, Percent, Scale, DownloadCloud, AlertOctagon, Layers, Calendar, MapPin
+  BookOpen, Network, Zap, Percent, Scale, DownloadCloud, AlertOctagon, Layers, Calendar, MapPin, ArrowLeftRight, Info
 } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, LineChart, Line } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, LineChart, Line, ScatterChart, Scatter, ZAxis } from 'recharts';
 
 export default function Dashboard() {
   const [urlInput, setUrlInput] = useState("");
@@ -15,7 +15,8 @@ export default function Dashboard() {
   const [activeTab, setActiveTab] = useState("audit"); 
   const [stats, setStats] = useState({ 
     selfTrade: 0, totalValue: 0, entities: 0, 
-    fraudValue: 0, riskIndex: 0, uTurns: 0, hsMismatches: 0 
+    fraudValue: 0, riskIndex: 0, uTurns: 0, hsMismatches: 0,
+    entityRisk: {}, brandAvgs: {}, massBalance: {}
   });
 
   const handleFetch = () => {
@@ -45,95 +46,107 @@ export default function Dashboard() {
   const analyzeFraud = (rawData) => {
     const parseVal = (v) => parseFloat(v?.toString().replace(/[^0-9.]/g, '')) || 0;
 
-    // --- 1. PRE-CALCULATE BRAND AVERAGES FOR PRICING ---
+    // 1. Calculations
+    const brandToHS = {};
+    const hsMismatchDetails = [];
+    const entityStats = {};
+    const massBalance = {}; 
+    const pairs = {};
     const brandPrices = {};
+
     rawData.forEach(r => {
-        const p = parseVal(r['Amount($)']) / (parseVal(r['Weight(Kg)']) || 1);
-        if (!brandPrices[r.Brand]) brandPrices[r.Brand] = [];
-        brandPrices[r.Brand].push(p);
+        const exp = r.Exporter;
+        const imp = r.Importer;
+        const brand = r.Brand;
+        const weight = parseVal(r['Weight(Kg)']);
+        const amount = parseVal(r['Amount($)']);
+        const hs = r['HS Code'];
+        const unitPrice = amount / (weight || 1);
+
+        // Initialize entities
+        [exp, imp].filter(Boolean).forEach(e => {
+            if (!entityStats[e]) entityStats[e] = { self: 0, hs: 0, price: 0, total: 0, uTurns: 0 };
+        });
+
+        // Price Baseline
+        if (!brandPrices[brand]) brandPrices[brand] = [];
+        brandPrices[brand].push(unitPrice);
+
+        // HS Logic
+        if (!brandToHS[brand]) {
+            brandToHS[brand] = hs;
+        } else if (brandToHS[brand] !== hs) {
+            entityStats[exp].hs += 1;
+            hsMismatchDetails.push({ entity: exp, brand, usedHS: hs, originalHS: brandToHS[brand], amount, weight });
+        }
+
+        // Self-Trade
+        if (exp === imp) {
+            entityStats[exp].self += 1;
+        }
+
+        // Mass Balance (Weight Tracking)
+        if (!massBalance[exp]) massBalance[exp] = {};
+        if (!massBalance[exp][brand]) massBalance[exp][brand] = { exp: 0, imp: 0 };
+        massBalance[exp][brand].exp += weight;
+
+        if (imp) {
+            if (!massBalance[imp]) massBalance[imp] = {};
+            if (!massBalance[imp][brand]) massBalance[imp][brand] = { exp: 0, imp: 0 };
+            massBalance[imp][brand].imp += weight;
+        }
+
+        // U-Turn Logic
+        const key = `${exp}->${imp}`;
+        pairs[key] = (pairs[key] || 0) + 1;
     });
+
     const brandAvgs = {};
     Object.keys(brandPrices).forEach(b => {
         brandAvgs[b] = brandPrices[b].reduce((a, b) => a + b, 0) / brandPrices[b].length;
     });
 
-    // --- 2. LOGIC DETECTION ---
-    const selfTradeLogs = [];
-    const hsMismatchedBrands = new Set();
-    const brandToHS = {};
-    const uTurnPairs = new Set();
-    const entityStats = {}; // To store Weighted Risk
-
-    // Initialize entity stats
-    const allEntities = new Set([...rawData.map(r => r.Exporter), ...rawData.map(r => r.Importer)].filter(Boolean));
-    allEntities.forEach(e => entityStats[e] = { self: 0, hs: 0, price: 0, total: 0 });
-
-    rawData.forEach(row => {
-        const exporter = row.Exporter;
-        const importer = row.Importer;
-        const brand = row.Brand;
-        const hs = row['HS Code'];
-        const price = parseVal(row['Amount($)']) / (parseVal(row['Weight(Kg)']) || 1);
-
-        entityStats[exporter].total += 1;
-        if (importer && exporter !== importer) entityStats[importer].total += 1;
-
-        // A. Self Trade
-        if (exporter === importer) {
-            selfTradeLogs.push(row);
-            entityStats[exporter].self += 1;
-        }
-
-        // B. HS Mismatch
-        if (!brandToHS[brand]) {
-            brandToHS[brand] = hs;
-        } else if (brandToHS[brand] !== hs) {
-            hsMismatchedBrands.add(brand);
-            entityStats[exporter].hs += 1;
-        }
-
-        // C. Price Anomaly (> 30% dev)
-        if (price > brandAvgs[brand] * 1.3 || price < brandAvgs[brand] * 0.7) {
-            entityStats[exporter].price += 1;
-        }
-    });
-
-    // D. U-Turns
-    const pairs = {};
-    rawData.forEach(r => {
-        const key = `${r.Exporter}->${r.Importer}`;
-        pairs[key] = (pairs[key] || 0) + 1;
-    });
+    // Check U-Turns
+    let uTurnCount = 0;
     Object.keys(pairs).forEach(k => {
-        const [exp, imp] = k.split('->');
-        if (exp !== imp && pairs[`${imp}->${exp}`]) uTurnPairs.add(`${exp}<>${imp}`);
+        const [e1, e2] = k.split('->');
+        if (e1 !== e2 && pairs[`${e2}->${e1}`]) {
+            uTurnCount++;
+            entityStats[e1].uTurns += 1;
+        }
     });
 
-    const totalVal = rawData.reduce((acc, row) => acc + parseVal(row['Amount($)']), 0);
-    const fraudVal = selfTradeLogs.reduce((acc, row) => acc + parseVal(row['Amount($)']), 0);
+    // Price Anomaly Flagging
+    rawData.forEach(r => {
+        const p = parseVal(r['Amount($)']) / (parseVal(r['Weight(Kg)']) || 1);
+        if (p > brandAvgs[r.Brand] * 1.3 || p < brandAvgs[r.Brand] * 0.7) {
+            entityStats[r.Exporter].price += 1;
+        }
+    });
 
     setData(rawData.map(r => ({
         ...r,
         _isSelf: r.Exporter === r.Importer,
-        _isHS: hsMismatchedBrands.has(r.Brand),
+        _isHS: brandToHS[r.Brand] !== r['HS Code'],
         _isPrice: (parseVal(r['Amount($)']) / (parseVal(r['Weight(Kg)']) || 1)) > brandAvgs[r.Brand] * 1.3
     })));
 
     setStats({
-      selfTrade: selfTradeLogs.length,
-      totalValue: totalVal,
-      fraudValue: fraudVal,
-      entities: allEntities.size,
-      riskIndex: (((selfTradeLogs.length + hsMismatchedBrands.size) / rawData.length) * 100).toFixed(1),
-      uTurns: uTurnPairs.size,
-      hsMismatches: hsMismatchedBrands.size,
-      entityRisk: entityStats,
-      brandAvgs: brandAvgs
+        selfTrade: rawData.filter(r => r.Exporter === r.Importer).length,
+        totalValue: rawData.reduce((acc, r) => acc + parseVal(r['Amount($)']), 0),
+        fraudValue: rawData.filter(r => r.Exporter === r.Importer).reduce((acc, r) => acc + parseVal(r['Amount($)']), 0),
+        entities: Object.keys(entityStats).length,
+        uTurns: Math.floor(uTurnCount/2),
+        hsMismatches: hsMismatchDetails.length,
+        hsDetails: hsMismatchDetails,
+        entityRisk: entityStats,
+        brandAvgs: brandAvgs,
+        massBalance: massBalance
     });
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 pb-20 font-sans">
+    <div className="min-h-screen bg-[#f1f5f9] text-slate-900 pb-20 font-sans">
       {/* NAV */}
       <nav className="bg-[#020617] text-white py-6 px-8 shadow-2xl border-b-4 border-blue-600 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
@@ -141,7 +154,7 @@ export default function Dashboard() {
             <ShieldAlert className="text-blue-500" size={40} />
             <div>
               <h1 className="text-3xl font-black tracking-tighter uppercase">TRADESHIELD <span className="text-blue-500">PRO AI</span></h1>
-              <div className="text-[10px] font-black text-blue-400 uppercase tracking-widest">Advanced Forensic Engine v2.0</div>
+              <div className="text-[10px] font-black text-blue-400 uppercase tracking-widest italic">Compliance & Forensic Division</div>
             </div>
           </div>
           <div className="flex w-full md:w-2/3 gap-3">
@@ -149,8 +162,7 @@ export default function Dashboard() {
               type="text" 
               placeholder="Source Audit URL..." 
               className="w-full bg-slate-900 border-2 border-slate-700 rounded-2xl py-3 px-6 text-lg text-white outline-none focus:ring-4 focus:ring-blue-500/50"
-              value={urlInput}
-              onChange={(e) => setUrlInput(e.target.value)}
+              value={urlInput} onChange={(e) => setUrlInput(e.target.value)}
             />
             <button onClick={handleFetch} className="bg-blue-600 hover:bg-blue-500 text-white font-black px-12 py-3 rounded-2xl text-lg transition-all">
               {loading ? "SCANNING..." : "AUDIT"}
@@ -162,154 +174,181 @@ export default function Dashboard() {
       {data.length > 0 && (
         <main className="max-w-7xl mx-auto p-8">
           
-          <div className="flex flex-wrap gap-2 mb-10 bg-slate-200 p-2 rounded-3xl shadow-inner overflow-x-auto">
-            <TabBtn active={activeTab === 'audit'} onClick={() => setActiveTab('audit')} icon={<ListFilter size={18}/>} label="Investigative Ledger" />
-            <TabBtn active={activeTab === 'network'} onClick={() => setActiveTab('network')} icon={<Network size={18}/>} label="Entity Risk (ERS)" />
+          <div className="flex flex-wrap gap-2 mb-10 bg-slate-300/50 p-2 rounded-3xl shadow-inner overflow-x-auto">
+            <TabBtn active={activeTab === 'audit'} onClick={() => setActiveTab('audit')} icon={<ListFilter size={18}/>} label="Ledger" />
+            <TabBtn active={activeTab === 'network'} onClick={() => setActiveTab('network')} icon={<Network size={18}/>} label="ERS Risk" />
+            <TabBtn active={activeTab === 'mass'} onClick={() => setActiveTab('mass')} icon={<Scale size={18}/>} label="Mass Balance" />
+            <TabBtn active={activeTab === 'loops'} onClick={() => setActiveTab('loops')} icon={<ArrowLeftRight size={18}/>} label="U-Turns/Self" />
+            <TabBtn active={activeTab === 'map'} onClick={() => setActiveTab('map')} icon={<Globe size={18}/>} label="Map Intel" />
             <TabBtn active={activeTab === 'hs'} onClick={() => setActiveTab('hs')} icon={<Layers size={18}/>} label="HS Intel" />
-            <TabBtn active={activeTab === 'pricing'} onClick={() => setActiveTab('pricing')} icon={<Scale size={18}/>} label="Price Variance" />
-            <TabBtn active={activeTab === 'guide'} onClick={() => setActiveTab('guide')} icon={<BookOpen size={18}/>} label="Logic Guide" />
-            <TabBtn active={activeTab === 'sar'} onClick={() => setActiveTab('sar')} icon={<FileText size={18}/>} label="SAR Report" />
+            <TabBtn active={activeTab === 'guide'} onClick={() => setActiveTab('guide')} icon={<BookOpen size={18}/>} label="Guide" />
           </div>
 
-          {/* TAB: LEDGER (ENHANCED) */}
+          {/* TAB 1: LEDGER */}
           {activeTab === "audit" && (
-            <div className="animate-in fade-in space-y-8">
-              <div className="bg-white rounded-[2.5rem] shadow-2xl border-2 border-slate-200 overflow-hidden">
-                <div className="p-8 bg-[#0f172a] text-white flex justify-between items-center">
-                    <h2 className="text-xl font-black uppercase tracking-widest">Transaction Intelligence Log</h2>
-                    <div className="text-[10px] font-bold bg-blue-600 px-4 py-2 rounded-full uppercase">Live Forensics Active</div>
-                </div>
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left">
-                        <thead className="bg-slate-100 text-slate-500 text-[10px] font-black uppercase">
-                            <tr>
-                                <th className="p-6">Risk</th>
-                                <th className="p-6">Date</th>
-                                <th className="p-6">Entity Involved</th>
-                                <th className="p-6">Product / HS</th>
-                                <th className="p-6">Origin &rarr; Dest</th>
-                                <th className="p-6 text-right">Weight / Value</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100">
-                            {data.map((row, i) => (
-                                <tr key={i} className={`${row._isSelf ? 'bg-red-50/50' : 'hover:bg-slate-50'} transition-all`}>
-                                    <td className="p-6">
-                                        {row._isSelf && <div className="bg-red-600 text-white text-[9px] font-black px-3 py-1 rounded-full mb-1">SELF-TRADE</div>}
-                                        {row._isHS && <div className="bg-orange-500 text-white text-[9px] font-black px-3 py-1 rounded-full mb-1">HS-MISMATCH</div>}
-                                        {row._isPrice && <div className="bg-purple-600 text-white text-[9px] font-black px-3 py-1 rounded-full">PRICE-ANOMALY</div>}
-                                        {!row._isSelf && !row._isHS && !row._isPrice && <div className="text-slate-300 text-[9px] font-black uppercase tracking-widest">Nominal</div>}
-                                    </td>
-                                    <td className="p-6 text-sm font-bold text-slate-500">
-                                        <div className="flex items-center gap-2"><Calendar size={14}/> {row.Date}</div>
-                                    </td>
-                                    <td className="p-6">
-                                        <div className="text-lg font-black uppercase text-slate-900 leading-none">{row.Exporter}</div>
-                                        <div className="text-[10px] font-bold text-blue-500 mt-2 uppercase">Importer: {row.Importer}</div>
-                                    </td>
-                                    <td className="p-6">
-                                        <div className="font-black text-slate-700 uppercase">{row.Brand}</div>
-                                        <div className="text-[10px] font-bold text-slate-400 mt-1">HS: {row['HS Code']}</div>
-                                    </td>
-                                    <td className="p-6">
-                                        <div className="flex items-center gap-2 text-[11px] font-black text-slate-700 uppercase">
-                                            <MapPin size={12} className="text-blue-500"/> {row['Origin Country']}
-                                        </div>
-                                        <div className="text-[10px] font-bold text-slate-400 mt-1 uppercase pl-5">&rarr; {row['Destination Country']}</div>
-                                    </td>
-                                    <td className="p-6 text-right">
-                                        <div className="text-2xl font-black text-slate-900 tracking-tighter">${row['Amount($)']}</div>
-                                        <div className="text-[10px] font-black text-slate-400 uppercase">{row['Weight(Kg)']} KG</div>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
+            <div className="space-y-8 animate-in fade-in">
+              <div className="bg-blue-600 p-4 rounded-2xl text-white flex items-center gap-3 font-bold text-sm shadow-lg">
+                <Info size={20}/>
+                <span><b className="uppercase">Price Anomaly Logic:</b> Transactions are flagged if the Unit Price deviates by more than 30% from the brand's global average in this dataset.</span>
               </div>
+              <TableLog data={data} />
             </div>
           )}
 
-          {/* TAB: NETWORK (ENTITY RISK SCORE) */}
+          {/* TAB 2: ERS SCORING */}
           {activeTab === "network" && (
-            <div className="animate-in fade-in space-y-8">
-                <div className="bg-[#020617] p-12 rounded-[3rem] text-white">
-                    <h2 className="text-3xl font-black uppercase mb-4 flex items-center gap-4"><Network className="text-blue-500"/> Entity Risk Scoring (ERS)</h2>
-                    <p className="text-slate-400 font-bold mb-10 max-w-2xl">Risk is calculated using weighted forensic flags: Self-Trade (3x), HS Mismatch (2x), and Price Anomaly (5x).</p>
-                    
+            <div className="space-y-8 animate-in fade-in">
+                <div className="bg-white p-10 rounded-[3rem] shadow-xl border-2 border-slate-200">
+                    <h2 className="text-3xl font-black uppercase mb-4">Entity Risk Scoring (ERS)</h2>
+                    <p className="text-slate-500 font-bold mb-8">
+                        The <span className="text-red-600">higher the ERS score, the higher the forensic risk</span>. A score above 50 indicates a potential shell entity or systematic fraud involvement.
+                    </p>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         {Object.entries(stats.entityRisk).sort((a,b) => {
-                            const scoreB = ((b[1].self*3 + b[1].hs*2 + b[1].price*5) / b[1].total);
-                            const scoreA = ((a[1].self*3 + a[1].hs*2 + a[1].price*5) / a[1].total);
-                            return scoreB - scoreA;
-                        }).map(([name, s]) => {
-                            const score = ((s.self*3 + s.hs*2 + s.price*5) / s.total * 10).toFixed(1);
-                            return (
-                                <div key={name} className="p-8 bg-slate-900 rounded-[2rem] border border-slate-800 flex justify-between items-center hover:border-blue-500 transition-all">
-                                    <div>
-                                        <h4 className="text-xl font-black uppercase tracking-tight">{name}</h4>
-                                        <div className="flex gap-4 mt-4">
-                                            <div className="text-center">
-                                                <div className="text-[9px] font-black text-slate-500 uppercase">Self</div>
-                                                <div className="font-black text-red-500">{s.self}</div>
-                                            </div>
-                                            <div className="text-center">
-                                                <div className="text-[9px] font-black text-slate-500 uppercase">HS</div>
-                                                <div className="font-black text-orange-500">{s.hs}</div>
-                                            </div>
-                                            <div className="text-center">
-                                                <div className="text-[9px] font-black text-slate-500 uppercase">Price</div>
-                                                <div className="font-black text-purple-500">{s.price}</div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div className="text-right">
-                                        <div className="text-[10px] font-black text-blue-400 uppercase mb-1">ERS SCORE</div>
-                                        <div className={`text-5xl font-black ${score > 50 ? 'text-red-500' : 'text-emerald-500'}`}>{score}</div>
-                                    </div>
-                                </div>
-                            )
-                        })}
+                             const scoreB = ((b[1].self*3 + b[1].hs*2 + b[1].price*5 + b[1].uTurns*4) / (b[1].total || 1));
+                             const scoreA = ((a[1].self*3 + a[1].hs*2 + a[1].price*5 + a[1].uTurns*4) / (a[1].total || 1));
+                             return scoreB - scoreA;
+                        }).map(([name, s]) => (
+                            <ERSCard key={name} name={name} s={s} />
+                        ))}
                     </div>
                 </div>
             </div>
           )}
 
-          {/* OTHER TABS (Simplified placeholders to keep code readable) */}
-          {activeTab === "hs" && (
-              <div className="p-10 bg-white rounded-[3rem] border-2 border-slate-200">
-                  <h2 className="text-2xl font-black uppercase mb-6 flex items-center gap-3"><Layers className="text-orange-500"/> HS Code Intelligence</h2>
-                  <p className="font-bold text-slate-500 mb-8">Detecting inconsistent tariff declarations for the same brand.</p>
+          {/* TAB 3: MASS BALANCE */}
+          {activeTab === "mass" && (
+              <div className="bg-white p-12 rounded-[3rem] shadow-2xl border-2 border-slate-200 animate-in zoom-in">
+                  <h2 className="text-3xl font-black uppercase mb-6 flex items-center gap-4"><Scale className="text-blue-600"/> Mass Balance Intelligence</h2>
+                  <p className="text-slate-500 font-bold mb-10">Comparing total Export Weight vs Import Weight per Brand. Near 100% parity suggests the entity is a "Transit Node" or performing "Round-Tripping".</p>
                   <div className="space-y-4">
-                    {Array.from(new Set(data.filter(d => d._isHS).map(d => d.Brand))).map(brand => (
-                        <div key={brand} className="p-6 bg-orange-50 border-2 border-orange-100 rounded-2xl flex justify-between items-center">
-                            <span className="text-xl font-black text-orange-900 uppercase">{brand}</span>
-                            <span className="bg-white px-6 py-2 rounded-xl font-black text-slate-900 shadow-sm border border-orange-200">MULTIPLE HS CODES DETECTED</span>
-                        </div>
+                    {Object.entries(stats.massBalance).map(([entity, brands]) => (
+                        Object.entries(brands).map(([brand, weights]) => {
+                            if (weights.exp > 0 && weights.imp > 0) {
+                                const variance = Math.abs((weights.exp - weights.imp) / weights.exp * 100).toFixed(1);
+                                return (
+                                    <div key={entity+brand} className="p-8 bg-slate-50 border-2 border-slate-100 rounded-[2rem] flex justify-between items-center">
+                                        <div>
+                                            <div className="text-[10px] font-black text-blue-500 uppercase">Entity: {entity}</div>
+                                            <div className="text-2xl font-black uppercase text-slate-800">{brand}</div>
+                                        </div>
+                                        <div className="flex gap-12 text-right">
+                                            <div>
+                                                <div className="text-[9px] font-black text-slate-400 uppercase">Imported</div>
+                                                <div className="text-xl font-black text-slate-900">{weights.imp.toFixed(1)} KG</div>
+                                            </div>
+                                            <div>
+                                                <div className="text-[9px] font-black text-slate-400 uppercase">Exported</div>
+                                                <div className="text-xl font-black text-slate-900">{weights.exp.toFixed(1)} KG</div>
+                                            </div>
+                                            <div className="bg-red-600 text-white px-6 py-3 rounded-2xl">
+                                                <div className="text-[9px] font-black uppercase">Variance</div>
+                                                <div className="text-xl font-black">{variance}%</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )
+                            }
+                            return null;
+                        })
                     ))}
                   </div>
               </div>
           )}
 
-          {activeTab === "pricing" && (
-              <div className="p-10 bg-white rounded-[3rem] border-2 border-slate-200">
-                  <h2 className="text-2xl font-black uppercase mb-6 flex items-center gap-3"><Scale className="text-purple-500"/> Unit Price Heatmap</h2>
-                  <div className="space-y-4">
-                    {data.filter(d => d._isPrice).slice(0, 10).map((r, i) => (
-                        <div key={i} className="p-6 bg-purple-50 border-2 border-purple-100 rounded-2xl flex justify-between items-center">
-                            <div>
-                                <div className="text-xl font-black text-purple-900 uppercase">{r.Brand}</div>
-                                <div className="text-[10px] font-bold text-purple-400 uppercase mt-1">Exceeds Market Average by &gt;30%</div>
+          {/* TAB 4: U-TURNS & SELF TRADE */}
+          {activeTab === "loops" && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 animate-in fade-in">
+                  <div className="bg-white p-10 rounded-[3rem] shadow-xl border-2 border-slate-200">
+                      <h3 className="text-2xl font-black uppercase mb-6 text-red-600">Self-Trade Analysis</h3>
+                      <div className="space-y-4">
+                          {Object.entries(stats.entityRisk).filter(e => e[1].self > 0).map(([name, s]) => (
+                              <div key={name} className="p-6 bg-red-50 rounded-2xl flex justify-between items-center border border-red-100">
+                                  <span className="font-black uppercase">{name}</span>
+                                  <span className="bg-red-600 text-white px-4 py-1 rounded-full text-xs font-black">{s.self} TRADES</span>
+                              </div>
+                          ))}
+                      </div>
+                  </div>
+                  <div className="bg-white p-10 rounded-[3rem] shadow-xl border-2 border-slate-200">
+                      <h3 className="text-2xl font-black uppercase mb-6 text-blue-600">U-Turn (Ping-Pong) Detection</h3>
+                      <div className="space-y-4">
+                        {stats.uTurns > 0 ? (
+                            <div className="text-center py-20">
+                                <ArrowLeftRight size={64} className="mx-auto text-blue-200 mb-4" />
+                                <div className="text-4xl font-black text-slate-900">{stats.uTurns} Loops</div>
+                                <div className="text-sm font-bold text-slate-400 uppercase">Verified Bilateral Flows</div>
                             </div>
-                            <div className="text-2xl font-black text-slate-900">${r['Amount($)']}</div>
-                        </div>
-                    ))}
+                        ) : <div className="text-slate-300 font-black text-center py-20 uppercase">No Loops Found</div>}
+                      </div>
+                  </div>
+              </div>
+          )}
+
+          {/* TAB 5: MAP INTEL */}
+          {activeTab === "map" && (
+              <div className="bg-white p-12 rounded-[3rem] shadow-2xl border-2 border-slate-200 animate-in slide-in-from-bottom-10">
+                  <h2 className="text-3xl font-black uppercase mb-8 flex items-center gap-3"><Globe className="text-emerald-500"/> Trade Corridor Intelligence</h2>
+                  <div className="grid grid-cols-1 gap-6">
+                      {data.filter((v,i,a)=>a.findIndex(t=>(t['Origin Country'] === v['Origin Country'] && t['Destination Country']===v['Destination Country']))===i).map((route, i) => (
+                          <div key={i} className="p-8 bg-slate-900 text-white rounded-[2rem] flex justify-between items-center">
+                              <div className="flex items-center gap-8">
+                                  <div className="text-center">
+                                      <div className="text-[10px] font-black text-emerald-400 uppercase">Origin</div>
+                                      <div className="text-xl font-black uppercase">{route['Origin Country']}</div>
+                                  </div>
+                                  <div className="h-0.5 w-20 bg-emerald-500 relative">
+                                      <div className="absolute -top-2 right-0 w-4 h-4 bg-emerald-500 rounded-full"></div>
+                                  </div>
+                                  <div className="text-center">
+                                      <div className="text-[10px] font-black text-blue-400 uppercase">Destination</div>
+                                      <div className="text-xl font-black uppercase">{route['Destination Country']}</div>
+                                  </div>
+                              </div>
+                              <div className="text-right">
+                                  <div className="text-[10px] font-black text-slate-500 uppercase">Primary Entity</div>
+                                  <div className="text-sm font-bold text-blue-400 uppercase">{route.Exporter}</div>
+                              </div>
+                          </div>
+                      ))}
+                  </div>
+              </div>
+          )}
+
+          {/* TAB 6: HS INTEL (ENHANCED) */}
+          {activeTab === "hs" && (
+              <div className="bg-white p-12 rounded-[3rem] shadow-2xl border-2 border-slate-200 animate-in fade-in">
+                  <h2 className="text-3xl font-black uppercase mb-10 flex items-center gap-3"><Layers className="text-orange-500"/> HS Misclassification Intelligence</h2>
+                  <div className="space-y-6">
+                      {stats.hsDetails.length > 0 ? stats.hsDetails.map((item, i) => (
+                          <div key={i} className="p-8 bg-orange-50 border-2 border-orange-100 rounded-[2.5rem] grid grid-cols-1 md:grid-cols-3 gap-8 items-center">
+                              <div>
+                                  <div className="text-[10px] font-black text-orange-600 uppercase">Entity Involved</div>
+                                  <div className="text-xl font-black text-slate-900 uppercase">{item.entity}</div>
+                                  <div className="text-sm font-bold text-slate-400 uppercase mt-1">Brand: {item.brand}</div>
+                              </div>
+                              <div className="flex justify-center gap-4">
+                                  <div className="text-center">
+                                      <div className="text-[9px] font-black text-slate-400 uppercase">Original HS</div>
+                                      <div className="bg-white border-2 border-slate-200 px-4 py-2 rounded-xl font-black">{item.originalHS}</div>
+                                  </div>
+                                  <div className="text-center">
+                                      <div className="text-[9px] font-black text-red-500 uppercase">Used HS</div>
+                                      <div className="bg-red-600 text-white px-4 py-2 rounded-xl font-black shadow-lg">{item.usedHS}</div>
+                                  </div>
+                              </div>
+                              <div className="text-right">
+                                  <div className="text-[10px] font-black text-slate-400 uppercase">Financial Impact</div>
+                                  <div className="text-3xl font-black text-slate-900 tracking-tighter">${item.amount.toLocaleString()}</div>
+                                  <div className="text-[10px] font-black text-blue-500 uppercase">{item.weight} KG</div>
+                              </div>
+                          </div>
+                      )) : <div className="text-center py-20 text-slate-300 font-black text-2xl uppercase">All HS Codes Compliant</div>}
                   </div>
               </div>
           )}
 
           {activeTab === "guide" && <GuideView />}
-          {activeTab === "sar" && <SARReport stats={stats} />}
 
         </main>
       )}
@@ -317,11 +356,90 @@ export default function Dashboard() {
   );
 }
 
-// --- SUBCOMPONENTS ---
+// --- SUB COMPONENTS ---
+
+function ERSCard({ name, s }) {
+    const score = ((s.self*3 + s.hs*2 + s.price*5 + s.uTurns*4) / (s.total || 1) * 10).toFixed(1);
+    const isCritical = score > 50;
+    return (
+        <div className={`p-8 bg-white rounded-[2.5rem] border-2 transition-all ${isCritical ? 'border-red-600 shadow-red-100 shadow-2xl' : 'border-slate-100 shadow-xl'}`}>
+            <div className="flex justify-between items-start mb-6">
+                <div>
+                    <h4 className="text-xl font-black uppercase text-slate-900 leading-none">{name}</h4>
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-2 block">{s.total} TOTAL TRANSACTIONS</span>
+                </div>
+                <div className="text-right">
+                    <div className="text-[10px] font-black text-slate-400 uppercase">Risk Level</div>
+                    <div className={`text-5xl font-black ${isCritical ? 'text-red-600' : 'text-emerald-500'}`}>{score}</div>
+                </div>
+            </div>
+            <div className="grid grid-cols-4 gap-2 pt-6 border-t border-slate-50">
+                <MiniFlag label="Self" val={s.self} color="red" />
+                <MiniFlag label="HS" val={s.hs} color="orange" />
+                <MiniFlag label="Price" val={s.price} color="purple" />
+                <MiniFlag label="Loop" val={s.uTurns} color="blue" />
+            </div>
+        </div>
+    );
+}
+
+function MiniFlag({ label, val, color }) {
+    const colors = { red: 'text-red-600', orange: 'text-orange-500', purple: 'text-purple-600', blue: 'text-blue-500' };
+    return (
+        <div className="text-center">
+            <div className="text-[8px] font-black text-slate-400 uppercase">{label}</div>
+            <div className={`text-sm font-black ${colors[color]}`}>{val}</div>
+        </div>
+    );
+}
+
+function TableLog({ data }) {
+    return (
+        <div className="bg-white rounded-[2.5rem] shadow-2xl border-2 border-slate-200 overflow-hidden">
+            <table className="w-full text-left">
+                <thead className="bg-[#0f172a] text-white text-[10px] font-black uppercase">
+                    <tr>
+                        <th className="p-6">Forensic Flags</th>
+                        <th className="p-6">Trade Route / Date</th>
+                        <th className="p-6">Entity Identity</th>
+                        <th className="p-6 text-right">Value / Weight</th>
+                    </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                    {data.map((row, i) => (
+                        <tr key={i} className={`${row._isSelf ? 'bg-red-50/50' : 'hover:bg-slate-50'}`}>
+                            <td className="p-6">
+                                <div className="flex flex-wrap gap-1">
+                                    {row._isSelf && <span className="bg-red-600 text-white text-[8px] font-black px-2 py-1 rounded-md">SELF</span>}
+                                    {row._isHS && <span className="bg-orange-500 text-white text-[8px] font-black px-2 py-1 rounded-md">HS</span>}
+                                    {row._isPrice && <span className="bg-purple-600 text-white text-[8px] font-black px-2 py-1 rounded-md">PRICE</span>}
+                                </div>
+                            </td>
+                            <td className="p-6">
+                                <div className="text-[10px] font-black text-slate-400 uppercase">{row.Date}</div>
+                                <div className="text-xs font-bold text-slate-800 uppercase mt-1 flex items-center gap-1">
+                                    <MapPin size={10} className="text-blue-500"/> {row['Origin Country']} &rarr; {row['Destination Country']}
+                                </div>
+                            </td>
+                            <td className="p-6">
+                                <div className="text-lg font-black uppercase text-slate-900">{row.Exporter}</div>
+                                <div className="text-[9px] font-bold text-blue-500 uppercase mt-1">To: {row.Importer}</div>
+                            </td>
+                            <td className="p-6 text-right">
+                                <div className="text-2xl font-black text-slate-900 tracking-tighter">${row['Amount($)']}</div>
+                                <div className="text-[10px] font-black text-slate-400 uppercase">{row['Weight(Kg)']} KG</div>
+                            </td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+        </div>
+    );
+}
 
 function TabBtn({ active, onClick, icon, label }) {
     return (
-        <button onClick={onClick} className={`flex items-center gap-2 px-6 py-4 rounded-2xl font-black text-xs uppercase tracking-tight transition-all shrink-0 ${active ? 'bg-[#020617] text-white shadow-xl scale-110 z-10' : 'text-slate-500 hover:text-slate-900'}`}>
+        <button onClick={onClick} className={`flex items-center gap-2 px-6 py-4 rounded-2xl font-black text-[11px] uppercase tracking-tight transition-all shrink-0 ${active ? 'bg-[#020617] text-white shadow-xl scale-110 z-10' : 'text-slate-500 hover:text-slate-900'}`}>
             {icon} {label}
         </button>
     );
@@ -330,56 +448,23 @@ function TabBtn({ active, onClick, icon, label }) {
 function GuideView() {
     return (
         <div className="bg-white p-12 rounded-[3rem] shadow-2xl border-2 border-slate-200">
-            <h2 className="text-3xl font-black uppercase mb-10 text-slate-900 border-b-8 border-blue-600 w-fit">Investigative Methodology</h2>
+            <h2 className="text-3xl font-black uppercase mb-10 text-slate-900 border-b-8 border-blue-600 w-fit">Audit Dictionary & Forensic Logic</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div className="p-8 bg-slate-50 rounded-3xl">
-                    <h4 className="text-xl font-black uppercase mb-2">1. Circular Self-Trade</h4>
-                    <p className="text-sm font-bold text-slate-600 leading-relaxed">Identified by matching Exporter and Importer names. This is the #1 indicator of VAT fraud and round-tripping.</p>
-                </div>
-                <div className="p-8 bg-slate-50 rounded-3xl">
-                    <h4 className="text-xl font-black uppercase mb-2">2. HS Code Mismatch</h4>
-                    <p className="text-sm font-bold text-slate-600 leading-relaxed">Detects if a single brand (e.g., Manchester) is being exported under different HS codes, suggesting tariff evasion.</p>
-                </div>
-                <div className="p-8 bg-slate-50 rounded-3xl">
-                    <h4 className="text-xl font-black uppercase mb-2">3. Price Variance</h4>
-                    <p className="text-sm font-bold text-slate-600 leading-relaxed">Compares shipment unit price against the 30-day average for that brand. Significant outliers suggest capital flight.</p>
-                </div>
-                <div className="p-8 bg-slate-50 rounded-3xl">
-                    <h4 className="text-xl font-black uppercase mb-2">4. U-Turn (Network)</h4>
-                    <p className="text-sm font-bold text-slate-600 leading-relaxed">Traces goods leaving Port A for Port B and then immediately returning. Classic round-tripping pattern.</p>
-                </div>
+                <GuideItem title="ERS Score (Entity Risk)" logic="Higher is Worse" desc="Calculated by weighting suspicious events. 0-20 (Clean), 21-50 (Watchlist), 50+ (Critical Risk/Shell Alert)." />
+                <GuideItem title="Price Anomaly" logic="±30% Brand Deviation" desc="Identifies potential capital flight (over-invoicing) or tax evasion (under-invoicing) compared to market brand price." />
+                <GuideItem title="Mass Balance Tracking" logic="Export vs Import Weight" desc="If an entity exports nearly 100% of what it imports for a specific brand, it is likely a pass-through node for circular trade." />
+                <GuideItem title="HS Code Mismatch" logic="Brand-HS Conflict" desc="Flags when a single product brand uses multiple tariff codes, indicating an attempt to hide trade volume or exploit lower duties." />
             </div>
         </div>
     );
 }
 
-function SARReport({ stats }) {
+function GuideItem({ title, logic, desc }) {
     return (
-        <div className="max-w-4xl mx-auto bg-white p-16 rounded-[4rem] shadow-2xl border-4 border-slate-900 text-left animate-in slide-in-from-bottom-12">
-            <h1 className="text-5xl font-black tracking-tighter mb-8 uppercase">Suspicious Activity Report</h1>
-            <div className="space-y-6">
-                <div className="flex justify-between border-b-2 pb-4 font-black uppercase text-xl">
-                    <span>Identified Capital at Risk</span>
-                    <span className="text-red-600">${stats.fraudValue.toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between border-b-2 pb-4 font-black uppercase">
-                    <span>Self-Trade Instances</span>
-                    <span>{stats.selfTrade}</span>
-                </div>
-                <div className="flex justify-between border-b-2 pb-4 font-black uppercase">
-                    <span>HS Classification Errors</span>
-                    <span>{stats.hsMismatches}</span>
-                </div>
-                <div className="flex justify-between border-b-2 pb-4 font-black uppercase">
-                    <span>Network U-Turns</span>
-                    <span>{stats.uTurns}</span>
-                </div>
-                <div className="pt-10">
-                    <button className="w-full bg-slate-900 text-white font-black py-6 rounded-3xl text-xl shadow-2xl flex items-center justify-center gap-4">
-                        <DownloadCloud /> EXPORT FULL AUDIT BUNDLE
-                    </button>
-                </div>
-            </div>
+        <div className="p-8 bg-slate-50 rounded-3xl border-2 border-slate-100 hover:border-blue-400 transition-all">
+            <h4 className="text-2xl font-black text-slate-900 uppercase mb-2">{title}</h4>
+            <code className="text-blue-600 font-bold text-xs bg-blue-50 px-3 py-1 rounded-md mb-4 block w-fit">{logic}</code>
+            <p className="text-sm font-bold text-slate-600 leading-relaxed">{desc}</p>
         </div>
     );
 }
