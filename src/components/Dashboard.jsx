@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, PieChart, Pie } from 'recharts';
 import "leaflet/dist/leaflet.css";
-import ShipmentLedger from "./components/ShipmentLedger";
+import ShipmentLedger from './ShipmentLedger';
 import NetworkGraph from "./components/NetworkGraph";
 import RouteRiskMap from "./components/RouteRiskMap";
 
