@@ -1,0 +1,114 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ---------- GLOBAL STYLES ---------- */
+
+html, body {
+  margin: 0;
+  padding: 0;
+  font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+  background-color: #f8fafc;
+  color: #0f172a;
+}
+
+/* ---------- SCROLLBAR ---------- */
+
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #e2e8f0;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #64748b;
+  border-radius: 6px;
+}
+
+/* ---------- TABLE STYLING ---------- */
+
+.table-auto th {
+  background-color: #0f172a;
+  color: white;
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 11px;
+}
+
+.table-auto td {
+  font-size: 13px;
+}
+
+/* ---------- CARD STYLES ---------- */
+
+.card {
+  @apply bg-white rounded-2xl shadow-md border border-slate-200 p-6;
+}
+
+.card-dark {
+  @apply bg-slate-900 text-white rounded-2xl shadow-lg border border-slate-700 p-6;
+}
+
+/* ---------- BUTTONS ---------- */
+
+.btn-primary {
+  @apply bg-blue-600 text-white px-4 py-2 rounded-xl font-semibold hover:bg-blue-700 transition;
+}
+
+.btn-danger {
+  @apply bg-red-600 text-white px-4 py-2 rounded-xl font-semibold hover:bg-red-700 transition;
+}
+
+/* ---------- BADGES ---------- */
+
+.badge-risk-high {
+  @apply bg-red-100 text-red-700 px-2 py-1 rounded-lg text-xs font-bold;
+}
+
+.badge-risk-medium {
+  @apply bg-yellow-100 text-yellow-700 px-2 py-1 rounded-lg text-xs font-bold;
+}
+
+.badge-risk-low {
+  @apply bg-green-100 text-green-700 px-2 py-1 rounded-lg text-xs font-bold;
+}
+
+/* ---------- MAP CONTAINER ---------- */
+
+.map-container {
+  height: 600px;
+  width: 100%;
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+/* ---------- NETWORK GRAPH ---------- */
+
+.network-node {
+  stroke: #1e293b;
+  stroke-width: 1.5px;
+}
+
+.network-link {
+  stroke: #94a3b8;
+  opacity: 0.6;
+}
+
+/* ---------- ANIMATION ---------- */
+
+.fade-in {
+  animation: fadeIn 0.4s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
