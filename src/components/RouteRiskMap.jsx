@@ -1,18 +1,20 @@
-import React from "react";
+import {MapContainer,TileLayer,Polyline} from "react-leaflet";
 
-export default function RouteRiskMap(){
+export default function RouteRiskMap({routes}){
 
 return(
 
-<div className="p-6">
+<MapContainer center={[20,0]} zoom={2} style={{height:"500px"}}>
 
-<h2 className="text-xl font-bold mb-4">Trade Route Map</h2>
+<TileLayer
+url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+/>
 
-<div className="text-slate-500">
-Leaflet map will appear here.
-</div>
+{routes.map((r,i)=>(
+<Polyline key={i} positions={r.coords}/>
+))}
 
-</div>
+</MapContainer>
 
 )
 
