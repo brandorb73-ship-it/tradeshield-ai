@@ -5,7 +5,6 @@ import {
   TrendingUp, Search, BarChart3, ListFilter, ShieldAlert, FileText, 
   BookOpen, Network, Zap, Percent, Scale, DownloadCloud, AlertOctagon, Layers, Calendar, MapPin, ArrowLeftRight, Info, DollarSign, Brain
 } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, PieChart, Pie } from 'recharts';
 import "leaflet/dist/leaflet.css";
 import ShipmentLedger from "./ShipmentLedger";
 import NetworkGraph from "./NetworkGraph";
@@ -18,9 +17,9 @@ export default function Dashboard() {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [activeTab, setActiveTab] = useState("audit"); 
+  const [activeTab, setActiveTab] = useState("audit");
   const [stats, setStats] = useState({});
-const [activeTab, setActiveTab] = useState("audit");
+
   const handleFetch = () => {
     if (!urlInput) return;
     setLoading(true);
@@ -416,7 +415,12 @@ const [activeTab, setActiveTab] = useState("audit");
                   </div>
               </div>
           )}
-
+{/* TAB: NETWORK GRAPH */}
+{activeTab === "networkGraph" && (
+  <div className="bg-white p-10 rounded-3xl border-4 border-slate-900 shadow-xl">
+      <NetworkGraph data={data}/>
+  </div>
+)}
           {activeTab === "guide" && <GuideView />}
 
         </main>
@@ -424,12 +428,6 @@ const [activeTab, setActiveTab] = useState("audit");
     </div>
   );
 }
-
-{activeTab === "networkGraph" && (
-  <div className="bg-white p-10 rounded-3xl border-4 border-slate-900 shadow-xl">
-      <NetworkGraph data={data}/>
-  </div>
-)}
 
 // --- SHARED COMPONENTS ---
 
