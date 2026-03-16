@@ -7,11 +7,11 @@ import {
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, PieChart, Pie } from 'recharts';
 import "leaflet/dist/leaflet.css";
-import ShipmentLedger from './ShipmentLedger';
-import NetworkGraph from "./components/NetworkGraph";
-import RouteRiskMap from "./components/RouteRiskMap";
+import ShipmentLedger from "./ShipmentLedger";
+import NetworkGraph from "./NetworkGraph";
+import RouteRiskMap from "./RouteRiskMap";
 
-import {detectTobaccoFraud} from "./analytics/tobaccoFraudSignals";
+import { detectTobaccoFraud } from "../analytics/tobaccoFraudSignals";
 
 export default function Dashboard() {
   const [urlInput, setUrlInput] = useState("");
