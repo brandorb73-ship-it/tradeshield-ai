@@ -11,6 +11,10 @@ import NetworkGraph from "./NetworkGraph";
 import RouteRiskMap from "./RouteRiskMap";
 
 import { detectTobaccoFraud } from "../analytics/tobaccoFraudSignals";
+import runFraudEngine from "../analytics/riskEngine";
+import detectVATCarousel from "../analytics/vatCarousel";
+import detectPhantomExporter from "../analytics/phantomExporter";
+import detectPriceFraud from "../analytics/priceFraud";
 
 export default function Dashboard() {
   const [urlInput, setUrlInput] = useState("");
@@ -19,7 +23,12 @@ export default function Dashboard() {
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState("audit");
   const [stats, setStats] = useState({});
-
+const [fraudStats, setFraudStats] = useState({
+  vat: [],
+  phantom: [],
+  price: [],
+  mlScores: {}
+});
   const handleFetch = () => {
     if (!urlInput) return;
     setLoading(true);
@@ -59,7 +68,20 @@ export default function Dashboard() {
     const tobaccoSignals=detectTobaccoFraud(rawData);
     let totalWeight = 0;
     let totalAmt = 0;
+// NEW FRAUD DETECTIONS
 
+const vatEntities = detectVATCarousel(rawData);
+const phantomEntities = detectPhantomExporter(rawData);
+const priceEntities = detectPriceFraud(rawData);
+
+const mlScores = runFraudEngine(rawData);
+
+setFraudStats({
+  vat: vatEntities,
+  phantom: phantomEntities,
+  price: priceEntities,
+  mlScores
+});
     rawData.forEach(row => {
         const exp = row.Exporter;
         const imp = row.Importer;
@@ -170,10 +192,34 @@ export default function Dashboard() {
               <div className="text-sm font-bold text-blue-300 uppercase tracking-widest">Global Forensic Dashboard</div>
             </div>
           </div>
-          <div className="flex w-full md:w-2/3 gap-3">
-            <input type="text" placeholder="Paste CSV Link..." className="w-full bg-slate-900 border-2 border-slate-700 rounded-2xl py-3 px-6 text-lg text-white outline-none" value={urlInput} onChange={(e)=>setUrlInput(e.target.value)} />
-            <button onClick={handleFetch} className="bg-blue-600 hover:bg-blue-500 text-white font-black px-12 py-3 rounded-2xl text-lg transition-all shadow-lg">AUDIT</button>
-          </div>
+         <div className="flex w-full md:w-2/3 gap-3">
+
+<input
+type="text"
+placeholder="Paste CSV Link..."
+className="w-full bg-slate-900 border-2 border-slate-700 rounded-2xl py-3 px-6 text-lg text-white"
+value={urlInput}
+onChange={(e)=>setUrlInput(e.target.value)}
+/>
+
+<button
+onClick={handleFetch}
+className="bg-blue-600 hover:bg-blue-500 text-white font-black px-10 py-3 rounded-2xl">
+AUDIT
+</button>
+
+<button
+onClick={()=>{
+setUrlInput("");
+setData([]);
+setStats({});
+setFraudStats({});
+}}
+className="bg-red-600 hover:bg-red-500 text-white font-black px-6 py-3 rounded-2xl">
+CLEAR
+</button>
+
+</div>
         </div>
       </nav>
 
@@ -196,9 +242,12 @@ export default function Dashboard() {
 
 <TabBtn active={activeTab === 'hs'} onClick={() => setActiveTab('hs')} icon={<Layers size={18}/>} label="HS Intel" />
 
+<TabBtn active={activeTab === 'fraud'} onClick={() => setActiveTab('fraud')} icon={<AlertTriangle size={18}/>} label="Fraud Intel" />
+
 <TabBtn active={activeTab === 'final'} onClick={() => setActiveTab('final')} icon={<Brain size={18}/>} label="AI Final Analysis" />
 
 <TabBtn active={activeTab === 'guide'} onClick={() => setActiveTab('guide')} icon={<BookOpen size={18}/>} label="Audit Guide" />
+
           </div>
 
           {/* TAB: LEDGER */}
@@ -415,6 +464,46 @@ export default function Dashboard() {
                   </div>
               </div>
           )}
+
+{activeTab === "fraud" && (
+
+<div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+
+<div className="bg-white p-8 rounded-3xl border-4 border-red-600">
+
+<h3 className="text-2xl font-black mb-4">VAT Carousel Risk</h3>
+
+{fraudStats.vat.map(e => (
+<div key={e} className="text-red-700 font-bold">{e}</div>
+))}
+
+</div>
+
+
+<div className="bg-white p-8 rounded-3xl border-4 border-purple-600">
+
+<h3 className="text-2xl font-black mb-4">Phantom Exporters</h3>
+
+{fraudStats.phantom.map(e => (
+<div key={e} className="text-purple-700 font-bold">{e}</div>
+))}
+
+</div>
+
+
+<div className="bg-white p-8 rounded-3xl border-4 border-blue-600">
+
+<h3 className="text-2xl font-black mb-4">Price Manipulation</h3>
+
+{fraudStats.price.map(e => (
+<div key={e} className="text-blue-700 font-bold">{e}</div>
+))}
+
+</div>
+
+</div>
+
+)}
 {/* TAB: NETWORK GRAPH */}
 {activeTab === "networkGraph" && (
   <div className="bg-white p-10 rounded-3xl border-4 border-slate-900 shadow-xl">
