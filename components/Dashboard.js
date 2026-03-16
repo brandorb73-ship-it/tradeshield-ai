@@ -6,6 +6,12 @@ import {
   BookOpen, Network, Zap, Percent, Scale, DownloadCloud, AlertOctagon, Layers, Calendar, MapPin, ArrowLeftRight, Info, DollarSign, Brain
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, PieChart, Pie } from 'recharts';
+import "leaflet/dist/leaflet.css";
+import ShipmentLedger from "./components/ShipmentLedger";
+import NetworkGraph from "./components/NetworkGraph";
+import RouteRiskMap from "./components/RouteRiskMap";
+
+import {detectTobaccoFraud} from "./analytics/tobaccoFraudSignals";
 
 export default function Dashboard() {
   const [urlInput, setUrlInput] = useState("");
@@ -51,7 +57,7 @@ export default function Dashboard() {
     const selfAgg = {}; // { [Entity]: {weight, qty, countries: Set, amount} }
     const amountBuckets = { small: 0, medium: 0, large: 0 };
     const brandPrices = {};
-
+    const tobaccoSignals=detectTobaccoFraud(rawData);
     let totalWeight = 0;
     let totalAmt = 0;
 
@@ -150,7 +156,7 @@ export default function Dashboard() {
     })));
 
     setStats({
-        totalWeight, totalAmt, entityStats, massBalance, routeIntel, hsAgg, selfAgg, amountBuckets, summary, brandAvgs
+        totalWeight, totalAmt, entityStats, massBalance, routeIntel, hsAgg, selfAgg, amountBuckets, summary, brandAvgs, tobaccoSignals
     });
   };
 
@@ -175,14 +181,15 @@ export default function Dashboard() {
       {data.length > 0 && (
         <main className="max-w-7xl mx-auto p-8">
           <div className="flex flex-wrap gap-2 mb-10 bg-slate-200 p-2 rounded-3xl shadow-inner overflow-x-auto border-2 border-slate-300">
-            <TabBtn active={activeTab === 'audit'} onClick={() => setActiveTab('audit')} icon={<ListFilter size={18}/>} label="Forensic Ledger" />
-            <TabBtn active={activeTab === 'final'} onClick={() => setActiveTab('final')} icon={<Brain size={18}/>} label="AI Final Analysis" />
+            <TabBtn active={activeTab === 'audit'} onClick={() => setActiveTab('audit')} icon={<ListFilter size={18}/>} label="Shipment Ledger" />
             <TabBtn active={activeTab === 'network'} onClick={() => setActiveTab('network')} icon={<Network size={18}/>} label="ERS Risk Score" />
             <TabBtn active={activeTab === 'mass'} onClick={() => setActiveTab('mass')} icon={<Scale size={18}/>} label="Mass Balance" />
             <TabBtn active={activeTab === 'self'} onClick={() => setActiveTab('self')} icon={<ArrowLeftRight size={18}/>} label="Self Trade Deep-Dive" />
+            <TabBtn active={activeTab==="network"} onClick={()=>setActiveTab("network")} label="Trade Network"/>
             <TabBtn active={activeTab === 'finance'} onClick={() => setActiveTab('finance')} icon={<DollarSign size={18}/>} label="Financial Forensics" />
             <TabBtn active={activeTab === 'map'} onClick={() => setActiveTab('map')} icon={<Globe size={18}/>} label="Map Intel" />
             <TabBtn active={activeTab === 'hs'} onClick={() => setActiveTab('hs')} icon={<Layers size={18}/>} label="HS Intel" />
+            <TabBtn active={activeTab === 'final'} onClick={() => setActiveTab('final')} icon={<Brain size={18}/>} label="AI Final Analysis" />
             <TabBtn active={activeTab === 'guide'} onClick={() => setActiveTab('guide')} icon={<BookOpen size={18}/>} label="Audit Guide" />
           </div>
 
