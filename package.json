@@ -9,15 +9,12 @@
     "papaparse": "^5.4.1",
     "recharts": "^2.8.0",
     "lucide-react": "^0.344.0",
-
     "leaflet": "^1.9.4",
     "react-leaflet": "^4.2.1",
-
     "d3": "^7.9.0",
-
     "jspdf": "^2.5.1"
-  }
-}
+  },
+
   "devDependencies": {
     "autoprefixer": "^10.4.14",
     "postcss": "^8.4.27",
