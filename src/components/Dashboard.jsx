@@ -20,7 +20,7 @@ export default function Dashboard() {
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState("audit"); 
   const [stats, setStats] = useState({});
-
+const [activeTab, setActiveTab] = useState("audit");
   const handleFetch = () => {
     if (!urlInput) return;
     setLoading(true);
