@@ -1,12 +1,17 @@
-export function fraudProbability(entity){
+export function fraudScore(entity){
 
-  const score =
-    entity.circular * 4 +
-    entity.exports * 0.2 +
-    entity.imports * 0.2;
+let score=0;
 
-  const prob = 1/(1+Math.exp(-score/10));
+score += entity.selfTrades*4;
 
-  return (prob*100).toFixed(1);
+score += entity.hsMismatch*2;
+
+score += entity.priceAnomaly*3;
+
+score += entity.circularLoops*5;
+
+score += entity.routeRisk*2;
+
+return score;
 
 }
