@@ -1,79 +1,113 @@
-import React,{useState} from "react";
+import React, { useMemo, useState } from "react";
 
-export default function ShipmentLedger({data}){
+export default function ShipmentLedger({ data = [] }) {
 
 const [search,setSearch]=useState("");
 
-const filtered=data.filter(r=>
-   Object.values(r)
-   .join(" ")
-   .toLowerCase()
-   .includes(search.toLowerCase())
-);
+const filtered=useMemo(()=>{
+
+return data.filter(r=>{
+
+const s=search.toLowerCase();
+
+return(
+(r.Exporter||"").toLowerCase().includes(s) ||
+(r.Importer||"").toLowerCase().includes(s) ||
+(r.Brand||"").toLowerCase().includes(s) ||
+(r["Origin Country"]||"").toLowerCase().includes(s) ||
+(r["Destination Country"]||"").toLowerCase().includes(s)
+)
+
+})
+
+},[data,search])
+
+const totalWeight=filtered.reduce((a,b)=>a+(parseFloat(b["Weight(Kg)"])||0),0)
+const totalValue=filtered.reduce((a,b)=>a+(parseFloat(b["Amount($)"])||0),0)
 
 return(
 
-<div className="bg-white p-8 rounded-3xl shadow-xl border-2">
+<div className="space-y-6">
 
-<h2 className="text-2xl font-black mb-4">Shipment Ledger</h2>
+<div className="flex justify-between items-center">
+
+<h2 className="text-xl font-bold">Shipment Ledger</h2>
 
 <input
-className="border p-2 w-full mb-6"
-placeholder="Search entity, brand, country..."
+type="text"
+placeholder="Search exporter, importer, brand..."
+className="border rounded-lg px-3 py-2"
 value={search}
-onChange={(e)=>setSearch(e.target.value)}
+onChange={e=>setSearch(e.target.value)}
 />
 
-<table className="w-full text-sm">
+</div>
 
-<thead className="bg-slate-900 text-white">
+<div className="text-sm text-slate-600 flex gap-6">
+
+<div>Total Shipments: <b>{filtered.length}</b></div>
+
+<div>Total Weight: <b>{totalWeight.toLocaleString()} kg</b></div>
+
+<div>Total Value: <b>${totalValue.toLocaleString()}</b></div>
+
+</div>
+
+<div className="overflow-x-auto border rounded-xl">
+
+<table className="table-auto w-full text-sm">
+
+<thead>
 
 <tr>
-<th>Date</th>
-<th>Exporter</th>
-<th>Importer</th>
-<th>Brand</th>
-<th>HS</th>
-<th>Route</th>
-<th>Weight</th>
-<th>Amount</th>
-<th>Flags</th>
+
+<th className="px-3 py-2">Date</th>
+<th className="px-3 py-2">Brand</th>
+<th className="px-3 py-2">Exporter</th>
+<th className="px-3 py-2">Importer</th>
+<th className="px-3 py-2">Origin</th>
+<th className="px-3 py-2">Destination</th>
+<th className="px-3 py-2">Weight (Kg)</th>
+<th className="px-3 py-2">Amount ($)</th>
+<th className="px-3 py-2">Unit Price</th>
+
 </tr>
 
 </thead>
 
 <tbody>
 
-{filtered.map((r,i)=>{
+{filtered.slice(0,500).map((r,i)=>(
 
-const flags=[];
+<tr key={i} className="border-t">
 
-if(r._isSelf) flags.push("Circular");
-if(r._priceAnomaly) flags.push("Price");
-if(r._hsMismatch) flags.push("HS");
+<td className="px-3 py-2">{r.Date}</td>
 
-return(
+<td className="px-3 py-2">{r.Brand}</td>
 
-<tr key={i} className="border-b">
+<td className="px-3 py-2">{r.Exporter}</td>
 
-<td>{r.Date}</td>
-<td>{r.Exporter}</td>
-<td>{r.Importer}</td>
-<td>{r.Brand}</td>
-<td>{r["HS Code"]}</td>
-<td>{r["Origin Country"]} → {r["Destination Country"]}</td>
-<td>{r["Weight(Kg)"]}</td>
-<td>${r["Amount($)"]}</td>
+<td className="px-3 py-2">{r.Importer}</td>
 
-<td className="text-red-600 font-bold">
-{flags.join(", ")}
+<td className="px-3 py-2">{r["Origin Country"]}</td>
+
+<td className="px-3 py-2">{r["Destination Country"]}</td>
+
+<td className="px-3 py-2">
+{parseFloat(r["Weight(Kg)"]||0).toLocaleString()}
+</td>
+
+<td className="px-3 py-2">
+${parseFloat(r["Amount($)"]||0).toLocaleString()}
+</td>
+
+<td className="px-3 py-2">
+{r["Unit Price($)"]||"-"}
 </td>
 
 </tr>
 
-);
-
-})}
+))}
 
 </tbody>
 
@@ -81,6 +115,8 @@ return(
 
 </div>
 
-);
+</div>
+
+)
 
 }
