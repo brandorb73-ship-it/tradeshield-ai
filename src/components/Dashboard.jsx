@@ -507,7 +507,7 @@ CLEAR
 {/* TAB: NETWORK GRAPH */}
 {activeTab === "networkGraph" && (
   <div className="bg-white p-10 rounded-3xl border-4 border-slate-900 shadow-xl">
-      <NetworkGraph data={data}/>
+      <NetworkGraph data={data} fraudStats={fraudStats}/>
   </div>
 )}
           {activeTab === "guide" && <GuideView />}
