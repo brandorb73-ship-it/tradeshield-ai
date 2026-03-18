@@ -21,17 +21,6 @@ import detectUTurnTrade from "../analytics/uTurnTrade";
 import FraudIntelligenceCard from "./FraudIntelligenceCard";
 import generateNarrative from "../analytics/aiNarrative";
 
-const AISummary = ({ title, content, icon: Icon }) => (
-  <div className="bg-blue-50 border-2 border-blue-200 p-6 rounded-3xl mt-8">
-    <div className="flex items-center gap-2 mb-3 text-blue-900 font-black uppercase text-sm">
-      <Icon size={20} /> {title}
-    </div>
-    <div className="text-slate-700 text-sm leading-relaxed font-medium">
-      {content}
-    </div>
-  </div>
-);
-
 export default function Dashboard() {
   const [urlInput, setUrlInput] = useState("");
   const [data, setData] = useState([]);
@@ -514,7 +503,7 @@ AI Intelligence Summary
       }
     />
   </div>
-
+)}
           {/* TAB: MASS BALANCE */}
           {activeTab === "mass" && (
               <div className="bg-white p-12 rounded-[3rem] shadow-2xl border-4 border-slate-900 animate-in fade-in">
@@ -843,3 +832,14 @@ function GuideItem({ title, logic, desc }) {
         </div>
     );
 }
+// Place your AISummary component HERE (outside the Dashboard function)
+const AISummary = ({ title, content, icon: Icon }) => (
+  <div className="bg-blue-50 border-2 border-blue-200 p-6 rounded-3xl mt-8">
+    <div className="flex items-center gap-2 mb-3 text-blue-900 font-black uppercase text-sm">
+      {Icon && <Icon size={20} />} {title}
+    </div>
+    <div className="text-slate-700 text-sm leading-relaxed font-medium">
+      {content}
+    </div>
+  </div>
+);
