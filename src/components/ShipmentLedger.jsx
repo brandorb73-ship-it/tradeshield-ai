@@ -10,6 +10,8 @@ return data.filter(r=>{
 
 const s=search.toLowerCase();
 
+const [filter,setFilter]=useState("ALL");
+
 return(
 (r.Exporter||"").toLowerCase().includes(s) ||
 (r.Importer||"").toLowerCase().includes(s) ||
