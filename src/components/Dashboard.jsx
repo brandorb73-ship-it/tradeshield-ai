@@ -685,7 +685,7 @@ Possible fraud:
 <div className="text-3xl font-black text-red-400">
 {stats.fraudProbability || 0}%
 </div>
-
+{/* DEBUG */}
 </div>
 
 <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
