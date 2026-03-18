@@ -514,7 +514,7 @@ AI Intelligence Summary
       }
     />
   </div>
-)}
+
           {/* TAB: MASS BALANCE */}
           {activeTab === "mass" && (
               <div className="bg-white p-12 rounded-[3rem] shadow-2xl border-4 border-slate-900 animate-in fade-in">
