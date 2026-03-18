@@ -29,7 +29,14 @@ export default function Dashboard() {
   const [activeTab, setActiveTab] = useState("audit");
 const [activeFilter, setActiveFilter] = useState("all");
   const [stats, setStats] = useState({});
-  const ersScores = {};
+const entityERS = useMemo(() => {
+  if (!stats.entityStats) return [];
+  return Object.entries(stats.entityStats).map(([name, s]) => {
+    const raw = (s.self * 30) + (s.hs * 20) + (s.price * 40);
+    const final = Math.min(100, (raw / s.total) + (s.total > 10 ? 10 : 0));
+    return { name, ...s, finalScore: final.toFixed(1) };
+  }).sort((a, b) => b.finalScore - a.finalScore);
+}, [stats]);
 const shellScores = {};
 const [fraudStats, setFraudStats] = useState({
   vat: [],
@@ -105,9 +112,20 @@ const analyzeFraud = (rawData) => {
       Importer: cleanRow["Importer"] || "UNKNOWN",
       Brand: cleanRow["Brand"] || "UNKNOWN",
       "HS Code": cleanRow["HS Code"] || "UNKNOWN",
-      "Amount($)": parseVal(cleanRow["Amount($)"]),
-      "Weight(Kg)": parseVal(cleanRow["Weight(Kg)"]),
-      Quantity: parseVal(cleanRow["Quantity"]),
+      // 1️⃣ REPLACEMENT LOGIC
+"Amount($)": parseVal(cleanRow["Amount($)"]),
+"Weight(Kg)": parseVal(cleanRow["Weight(Kg)"]),
+"Quantity": parseVal(cleanRow["Quantity"]),
+
+// New: Capture declared price and create a calculated fallback
+"_declaredPrice": parseVal(cleanRow["Unit Price($)"]),
+get _effectivePrice() {
+  const amt = parseVal(cleanRow["Amount($)"]);
+  const wgt = parseVal(cleanRow["Weight(Kg)"]);
+  const declared = parseVal(cleanRow["Unit Price($)"]);
+  // Use declared if > 0, otherwise calculate fallback
+  return (declared > 0) ? declared : (wgt > 0 ? amt / wgt : 0);
+},
       "Origin Country": cleanRow["Origin Country"] || "UNKNOWN",
       "Destination Country": cleanRow["Destination Country"] || "UNKNOWN",
       Date: cleanRow["Date"] || ""
@@ -203,16 +221,28 @@ const analyzeFraud = (rawData) => {
     brandAvgs[b] = brandPrices[b].reduce((a, c) => a + c, 0) / brandPrices[b].length;
   });
 
-  // 5️⃣ Flag price anomalies safely
-  cleanedData.forEach(r => {
-    const exp = r.Exporter;
-    const brand = r.Brand;
-    const p = r["Weight(Kg)"] > 0 ? r["Amount($)"] / r["Weight(Kg)"] : 0;
-    const avg = brandAvgs[brand] || 0;
-    if (avg > 0 && p > avg * 1.3 || p < avg * 0.7) {
+// 5️⃣ Flag price anomalies safely
+cleanedData.forEach(r => {
+  const exp = r.Exporter;
+  const brand = r.Brand;
+  
+  // Use the effective price we calculated in Step 1
+  const p = r._effectivePrice; 
+  const avg = brandAvgs[brand] || 0;
+
+  // Perform the check
+  if (avg > 0 && (p > avg * 1.3 || p < avg * 0.7)) {
+    // 1. Update the running tally for the ERS score cards
+    if (entityStats[exp]) {
       entityStats[exp].price += 1;
     }
-  });
+    
+    // 2. Attach the flag directly to the row for the Table UI
+    r._isPrice = true; 
+  } else {
+    r._isPrice = false;
+  }
+});
 
   // 6️⃣ Run external fraud engines safely
   let tobaccoSignals = [], uTurnEntities = [], vatEntities = [], phantomEntities = [], priceEntities = [], mlScores = {}, fraudProb = 0;
@@ -315,24 +345,7 @@ CLEAR
           {activeTab === "audit" && (
             <div className="animate-in fade-in space-y-6">
                 <div className="bg-white rounded-[2rem] shadow-2xl border-4 border-slate-900 overflow-hidden">
-                  <select
-onChange={(e)=>{
-  const val = e.target.value;
-  if(val==="all") return setData(data);
-
-  setData(data.filter(d=>{
-    if(val==="self") return d._isSelf;
-    if(val==="hs") return d._isHS;
-    if(val==="price") return d._isPrice;
-  }));
-}}
-className="mb-4 p-2 border rounded"
->
-<option value="all">All</option>
-<option value="self">Self Trade</option>
-<option value="hs">HS Mismatch</option>
-<option value="price">Price Fraud</option>
-</select>
+                 
                     <table className="w-full text-left">
                       <thead className="bg-slate-900 text-white text-xs font-black uppercase">
   <tr>
