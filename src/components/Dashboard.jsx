@@ -621,33 +621,37 @@ Possible fraud:
 )}
 
           {/* TAB: MAP INTEL */}
-          {activeTab === "map" && (
-  {activeTab==="heat" && (
-  <div className="bg-black p-6 rounded-2xl">
-    <RouteRiskMap data={data} fraudStats={fraudStats}/>
-  </div>
-)}
-              <div className="bg-slate-900 p-12 rounded-[4rem] text-white animate-in fade-in">
-                  <h2 className="text-3xl font-black uppercase mb-10 flex items-center gap-4"><Globe className="text-blue-500"/> Trade Corridor Density</h2>
-                  <div className="space-y-4">
-                      {Object.entries(stats.routeIntel).map(([route, d]) => (
-                          <div key={route} className="p-8 bg-slate-800 rounded-[2rem] border-2 border-slate-700 flex justify-between items-center">
-                              <div>
-                                  <div className="text-3xl font-black uppercase tracking-tighter text-blue-400">{route}</div>
-                                  <div className="flex gap-4 mt-2">
-                                      {Array.from(d.entities).map(e => <span key={e} className="text-sm font-bold bg-slate-700 px-3 py-1 rounded text-slate-300">{e}</span>)}
-                                  </div>
-                              </div>
-                              <div className="text-right">
-                                  <div className="text-2xl font-black">${d.amount.toLocaleString()}</div>
-                                  <div className="text-sm font-black text-slate-500 uppercase">{d.weight.toFixed(0)} KG TRANSACTED</div>
-                              </div>
-                          </div>
-                      ))}
+     {/* TAB: MAP INTEL */}
+{activeTab === "map" && (
+  <div className="bg-slate-900 p-12 rounded-[4rem] text-white animate-in fade-in">
+      <h2 className="text-3xl font-black uppercase mb-10 flex items-center gap-4">
+          <Globe className="text-blue-500"/> Trade Corridor Density
+      </h2>
+      <div className="space-y-4">
+          {Object.entries(stats.routeIntel).map(([route, d]) => (
+              <div key={route} className="p-8 bg-slate-800 rounded-[2rem] border-2 border-slate-700 flex justify-between items-center">
+                  <div>
+                      <div className="text-3xl font-black uppercase tracking-tighter text-blue-400">{route}</div>
+                      <div className="flex gap-4 mt-2">
+                          {Array.from(d.entities).map(e => <span key={e} className="text-sm font-bold bg-slate-700 px-3 py-1 rounded text-slate-300">{e}</span>)}
+                      </div>
+                  </div>
+                  <div className="text-right">
+                      <div className="text-2xl font-black">${d.amount.toLocaleString()}</div>
+                      <div className="text-sm font-black text-slate-500 uppercase">{d.weight.toFixed(0)} KG TRANSACTED</div>
                   </div>
               </div>
-          )}
+          ))}
+      </div>
+  </div>
+)}
 
+{/* TAB: FRAUD HEATMAP */}
+{activeTab === "heat" && (
+  <div className="bg-black p-6 rounded-2xl">
+      <RouteRiskMap data={data} fraudStats={fraudStats}/>
+  </div>
+)}
           {/* TAB: HS INTEL (AGGREGATED) */}
           {activeTab === "hs" && (
               <div className="bg-white p-12 rounded-[3rem] shadow-2xl border-4 border-slate-900 animate-in fade-in">
