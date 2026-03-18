@@ -1,24 +1,27 @@
-export default function generateNarrative(stats,fraud){
+export default function generateNarrative(stats, fraud){
 
 return `
+TRADE FORENSIC SUMMARY
 
-TradeShield Forensic Intelligence Summary
+Total Trade Value: $${stats.totalAmt}
+Total Weight: ${stats.totalWeight} KG
 
-Dataset analyzed contains ${stats.totalWeight} KG of goods
-valued at $${stats.totalAmt}.
+HIGH RISK ENTITIES:
+${fraud.vat.map(e=>`• ${e}`).join("\n")}
 
-Key Findings:
+PHANTOM EXPORTERS:
+${fraud.phantom.map(e=>`• ${e}`).join("\n")}
 
-• ${fraud.vat.length} entities show VAT carousel behaviour
-• ${fraud.phantom.length} phantom exporters detected
-• ${fraud.price.length} price manipulation indicators
+PRICE ANOMALIES:
+${fraud.price.map(e=>`• ${e.entity} (${e.deviation}%)`).join("\n")}
 
-Network analysis suggests potential
-hub-and-spoke laundering patterns.
+ANALYSIS:
 
-Recommended action:
-Prioritize customs audit on flagged entities.
+Data indicates structured trade flows with potential
+circular trading and value manipulation.
 
+RECOMMENDATION:
+
+Immediate audit of high-risk entities and routes.
 `;
-
 }
