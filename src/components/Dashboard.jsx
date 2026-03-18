@@ -67,38 +67,31 @@ const fin = useMemo(() => {
     });
   };
 
-  const analyzeFraud = (rawData) => {
-    const parseVal = (v) => parseFloat(v?.toString().replace(/[^0-9.]/g, '')) || 0;
+const analyzeFraud = (rawData) => {
+    // 1. Pre-filter out empty or invalid rows to prevent crashes
+    const validData = rawData.filter(row => row.Exporter && row.Importer && row.Brand);
+    
+    const parseVal = (v) => {
+      if (!v) return 0;
+      const n = parseFloat(v.toString().replace(/[^0-9.]/g, ''));
+      return isNaN(n) ? 0 : n;
+    };
 
     // --- LOGIC CONTAINERS ---
     const brandToHS = {};
     const entityStats = {};
     const massBalance = {}; 
     const routeIntel = {};
-    const hsAgg = {}; // { [Entity|Brand|HS]: {weight, amount, count} }
-    const selfAgg = {}; // { [Entity]: {weight, qty, countries: Set, amount} }
+    const hsAgg = {};
+    const selfAgg = {};
     const amountBuckets = { small: 0, medium: 0, large: 0 };
     const brandPrices = {};
-    const tobaccoSignals=detectTobaccoFraud(rawData);
+    
     let totalWeight = 0;
     let totalAmt = 0;
-    
-// NEW FRAUD DETECTIONS
-const uTurnEntities = detectUTurnTrade(rawData);
-const vatEntities = detectVATCarousel(rawData);
-const phantomEntities = detectPhantomExporter(rawData);
-const priceEntities = detectPriceFraud(rawData);
 
-const mlScores = runFraudEngine(rawData);
-const fraudProb = calculateFraudProbability(rawData);
-setFraudStats({
-  vat: [],
-  phantom: [],
-  price: [],
-  uturn: [],
-  mlScores: {}
-});
-    rawData.forEach(row => {
+    // 2. Initialize and Aggregate
+    validData.forEach(row => {
         const exp = row.Exporter;
         const imp = row.Importer;
         const brand = row.Brand;
@@ -108,23 +101,26 @@ setFraudStats({
         const qty = parseVal(row['Quantity']);
         const origin = row['Origin Country'];
         const dest = row['Destination Country'];
-        const unitPrice = amt / (weight || 1);
+        const unitPrice = weight > 0 ? amt / weight : 0;
 
         totalWeight += weight;
         totalAmt += amt;
 
-        // Financial Intelligence
+        // Financial Intelligence Bucketing
         if (amt < 1000) amountBuckets.small++;
         else if (amt < 5000) amountBuckets.medium++;
         else amountBuckets.large++;
 
-        // Initialize entities
-        [exp, imp].filter(Boolean).forEach(e => {
-            if (!entityStats[e]) entityStats[e] = { self: 0, hs: 0, price: 0, total: 0, uTurns: 0 };
+        // SAFE INITIALIZATION: Ensure entity exists in the stats object
+        [exp, imp].forEach(e => {
+            if (e && !entityStats[e]) {
+                entityStats[e] = { self: 0, hs: 0, price: 0, total: 0, uTurns: 0 };
+            }
         });
-        entityStats[exp].total += 1;
+        
+        if (exp) entityStats[exp].total += 1;
 
-        // HS Aggregation
+        // HS Aggregation logic
         const hsKey = `${exp}|${brand}|${hs}`;
         if (!hsAgg[hsKey]) hsAgg[hsKey] = { entity: exp, brand, hs, weight: 0, amount: 0, count: 0 };
         hsAgg[hsKey].weight += weight;
@@ -132,11 +128,14 @@ setFraudStats({
         hsAgg[hsKey].count++;
 
         // HS Mismatch Logic
-        if (!brandToHS[brand]) brandToHS[brand] = hs;
-        else if (brandToHS[brand] !== hs) entityStats[exp].hs += 1;
+        if (!brandToHS[brand]) {
+            brandToHS[brand] = hs;
+        } else if (brandToHS[brand] !== hs && exp) {
+            entityStats[exp].hs += 1;
+        }
 
-        // Self-Trade Aggregation
-        if (exp === imp) {
+        // Self-Trade Logic
+        if (exp === imp && exp) {
             entityStats[exp].self += 1;
             if (!selfAgg[exp]) selfAgg[exp] = { weight: 0, qty: 0, countries: new Set(), amount: 0 };
             selfAgg[exp].weight += weight;
@@ -147,9 +146,10 @@ setFraudStats({
         }
 
         // Mass Balance
-        if (!massBalance[exp]) massBalance[exp] = {};
-        if (!massBalance[exp][brand]) massBalance[exp][brand] = { exp: 0, imp: 0 };
-        massBalance[exp][brand].exp += weight;
+        if (exp && !massBalance[exp]) massBalance[exp] = {};
+        if (exp && !massBalance[exp][brand]) massBalance[exp][brand] = { exp: 0, imp: 0 };
+        if (exp) massBalance[exp][brand].exp += weight;
+        
         if (imp) {
             if (!massBalance[imp]) massBalance[imp] = {};
             if (!massBalance[imp][brand]) massBalance[imp][brand] = { exp: 0, imp: 0 };
@@ -161,51 +161,75 @@ setFraudStats({
         if (!routeIntel[routeKey]) routeIntel[routeKey] = { weight: 0, amount: 0, entities: new Set() };
         routeIntel[routeKey].weight += weight;
         routeIntel[routeKey].amount += amt;
-        routeIntel[routeKey].entities.add(exp);
+        if (exp) routeIntel[routeKey].entities.add(exp);
 
         // Price Baseline
-        if (!brandPrices[brand]) brandPrices[brand] = [];
-        brandPrices[brand].push(unitPrice);
-    });
-
-    const brandAvgs = {};
-    Object.keys(brandPrices).forEach(b => {
-        brandAvgs[b] = brandPrices[b].reduce((a, b) => a + b, 0) / brandPrices[b].length;
-    });
-
-    // U-Turn + Price Anomaly Post-Process
-    rawData.forEach(r => {
-        const p = parseVal(r['Amount($)']) / (parseVal(r['Weight(Kg)']) || 1);
-        if (p > brandAvgs[r.Brand] * 1.3 || p < brandAvgs[r.Brand] * 0.7) {
-            entityStats[r.Exporter].price += 1;
+        if (brand) {
+            if (!brandPrices[brand]) brandPrices[brand] = [];
+            if (unitPrice > 0) brandPrices[brand].push(unitPrice);
         }
     });
 
-    // Final AI-Summary Construction
-    const highRiskNode = Object.entries(entityStats).sort((a,b) => b[1].self - a[1].self)[0][0];
-    const summary = `Forensic scan identifies ${highRiskNode} as the primary entity of concern due to high circularity. Total capital at risk through self-trading is $${totalAmt.toLocaleString()}. Analysis of HS codes shows ${Object.keys(hsAgg).length} aggregated shipment types, with significant mass balance parity in ${Object.keys(massBalance).length} entities, suggesting a hub-and-spoke tax evasion pattern.`;
+    // 3. Calculate Brand Averages
+    const brandAvgs = {};
+    Object.keys(brandPrices).forEach(b => {
+        const sum = brandPrices[b].reduce((acc, val) => acc + val, 0);
+        brandAvgs[b] = sum / brandPrices[b].length;
+    });
 
-    setData(rawData.map(r => ({
+    // 4. Post-Process for Price Anomalies (Fix for 'A INTERNATIONAL')
+    validData.forEach(r => {
+        const exp = r.Exporter;
+        const brand = r.Brand;
+        const p = parseVal(r['Amount($)']) / (parseVal(r['Weight(Kg)']) || 1);
+        
+        // Final guard to ensure exp and brand exist in our calculated maps
+        if (exp && entityStats[exp] && brandAvgs[brand]) {
+            const avg = brandAvgs[brand];
+            if (p > avg * 1.3 || p < avg * 0.7) {
+                entityStats[exp].price += 1;
+            }
+        }
+    });
+
+    // 5. Run External Fraud Engines (Safely)
+    const tobaccoSignals = typeof detectTobaccoFraud === 'function' ? detectTobaccoFraud(validData) : [];
+    const uTurnEntities = typeof detectUTurnTrade === 'function' ? detectUTurnTrade(validData) : [];
+    const vatEntities = typeof detectVATCarousel === 'function' ? detectVATCarousel(validData) : [];
+    const phantomEntities = typeof detectPhantomExporter === 'function' ? detectPhantomExporter(validData) : [];
+    const priceEntities = typeof detectPriceFraud === 'function' ? detectPriceFraud(validData) : [];
+    const mlScores = typeof runFraudEngine === 'function' ? runFraudEngine(validData) : {};
+    const fraudProb = typeof calculateFraudProbability === 'function' ? calculateFraudProbability(validData) : 0;
+
+    // 6. Final State Updates
+    setData(validData.map(r => ({
         ...r,
         _isSelf: r.Exporter === r.Importer,
         _isHS: brandToHS[r.Brand] !== r['HS Code'],
-        _isPrice: (parseVal(r['Amount($)']) / (parseVal(r['Weight(Kg)']) || 1)) > brandAvgs[r.Brand] * 1.3
+        _isPrice: (parseVal(r['Amount($)']) / (parseVal(r['Weight(Kg)']) || 1)) > (brandAvgs[r.Brand] || 0) * 1.3
     })));
 
-setStats({
-  totalWeight,
-  totalAmt,
-  entityStats,
-  massBalance,
-  routeIntel,
-  hsAgg,
-  selfAgg,
-  amountBuckets,
-  summary,
-  brandAvgs,
-  tobaccoSignals,
-  fraudProbability: fraudProb
-});
+    setFraudStats({
+        vat: vatEntities,
+        phantom: phantomEntities,
+        price: priceEntities,
+        uturn: uTurnEntities,
+        mlScores: mlScores
+    });
+
+    setStats({
+        totalWeight,
+        totalAmt,
+        entityStats,
+        massBalance,
+        routeIntel,
+        hsAgg,
+        selfAgg,
+        amountBuckets,
+        brandAvgs,
+        tobaccoSignals,
+        fraudProbability: fraudProb
+    });
   };
 
   return (
