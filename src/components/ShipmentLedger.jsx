@@ -2,132 +2,194 @@ import React, { useMemo, useState } from "react";
 
 export default function ShipmentLedger({ data = [] }) {
 
-const [search,setSearch]=useState("");
+  const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState("ALL");
 
-const filtered=useMemo(()=>{
+  // -----------------------------
+  // FILTER + SEARCH LOGIC
+  // -----------------------------
+  const filtered = useMemo(() => {
 
-return data.filter(r=>{
+    return data.filter(r => {
 
-const s=search.toLowerCase();
+      const s = search.toLowerCase();
 
-const [filter,setFilter]=useState("ALL");
+      const matchesSearch =
+        (r.Exporter || "").toLowerCase().includes(s) ||
+        (r.Importer || "").toLowerCase().includes(s) ||
+        (r.Brand || "").toLowerCase().includes(s) ||
+        (r["Origin Country"] || "").toLowerCase().includes(s) ||
+        (r["Destination Country"] || "").toLowerCase().includes(s);
 
-return(
-(r.Exporter||"").toLowerCase().includes(s) ||
-(r.Importer||"").toLowerCase().includes(s) ||
-(r.Brand||"").toLowerCase().includes(s) ||
-(r["Origin Country"]||"").toLowerCase().includes(s) ||
-(r["Destination Country"]||"").toLowerCase().includes(s)
-)
+      const matchesFilter =
+        filter === "ALL"
+          ? true
+          : (r.fraudLevel || "LOW") === filter;
 
-})
+      return matchesSearch && matchesFilter;
 
-},[data,search])
+    });
 
-const totalWeight=filtered.reduce((a,b)=>a+(parseFloat(b["Weight(Kg)"])||0),0)
-const totalValue=filtered.reduce((a,b)=>a+(parseFloat(b["Amount($)"])||0),0)
+  }, [data, search, filter]);
 
-return(
+  // -----------------------------
+  // TOTALS
+  // -----------------------------
+  const totalWeight = filtered.reduce(
+    (a, b) => a + (parseFloat(b["Weight(Kg)"]) || 0),
+    0
+  );
 
-<div className="space-y-6">
+  const totalValue = filtered.reduce(
+    (a, b) => a + (parseFloat(b["Amount($)"]) || 0),
+    0
+  );
 
-<div className="flex justify-between items-center">
+  // -----------------------------
+  // UNIT PRICE SAFE CALC
+  // -----------------------------
+  const getUnitPrice = (r) => {
+    if (r["Unit Price($)"]) return Number(r["Unit Price($)"]).toFixed(2);
 
-<h2 className="text-xl font-bold">Shipment Ledger</h2>
+    const weight = Number(r["Weight(Kg)"]) || 0;
+    const amt = Number(r["Amount($)"]) || 0;
 
-<input
-type="text"
-placeholder="Search exporter, importer, brand..."
-className="border rounded-lg px-3 py-2"
-value={search}
-onChange={e=>setSearch(e.target.value)}
-/>
+    if (weight > 0) return (amt / weight).toFixed(2);
 
-</div>
+    return "-";
+  };
 
-<div className="text-sm text-slate-600 flex gap-6">
+  // -----------------------------
+  // UI
+  // -----------------------------
+  return (
 
-<div>Total Shipments: <b>{filtered.length}</b></div>
+    <div className="space-y-6">
 
-<div>Total Weight: <b>{totalWeight.toLocaleString()} kg</b></div>
+      <div className="flex justify-between items-center">
 
-<div>Total Value: <b>${totalValue.toLocaleString()}</b></div>
+        <h2 className="text-xl font-bold">Shipment Ledger</h2>
 
-</div>
+        <input
+          type="text"
+          placeholder="Search exporter, importer, brand..."
+          className="border rounded-lg px-3 py-2"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+        />
 
-<div className="overflow-x-auto border rounded-xl">
+      </div>
 
-<table className="table-auto w-full text-sm">
+      {/* ✅ FILTER DROPDOWN */}
+      <div className="flex gap-4 items-center">
 
-<thead>
+        <select
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+          className="border px-3 py-2 rounded-lg"
+        >
+          <option value="ALL">All Risk</option>
+          <option value="HIGH">High Risk</option>
+          <option value="MEDIUM">Medium Risk</option>
+          <option value="LOW">Low Risk</option>
+        </select>
 
-<tr>
+      </div>
 
-<th className="px-3 py-2">Date</th>
-<th className="px-3 py-2">Brand</th>
-<th className="px-3 py-2">Exporter</th>
-<th className="px-3 py-2">Importer</th>
-<th className="px-3 py-2">Origin</th>
-<th className="px-3 py-2">Destination</th>
-<th className="px-3 py-2">Weight (Kg)</th>
-<th className="px-3 py-2">Amount ($)</th>
-<th className="px-3 py-2">Unit Price</th>
-<th>Fraud Score</th>
-<th>Risk</th>
-<th>Reasons</th>
+      <div className="text-sm text-slate-600 flex gap-6">
 
-</tr>
+        <div>Total Shipments: <b>{filtered.length}</b></div>
 
-</thead>
+        <div>Total Weight: <b>{totalWeight.toLocaleString()} kg</b></div>
 
-<tbody>
+        <div>Total Value: <b>${totalValue.toLocaleString()}</b></div>
 
-{filtered.slice(0,500).map((r,i)=>(
+      </div>
 
-<tr key={i} className="border-t">
+      <div className="overflow-x-auto border rounded-xl">
 
-<td className="px-3 py-2">{r.Date}</td>
+        <table className="table-auto w-full text-sm">
 
-<td className="px-3 py-2">{r.Brand}</td>
+          <thead className="bg-slate-100">
 
-<td className="px-3 py-2">{r.Exporter}</td>
+            <tr>
+              <th className="px-3 py-2">Date</th>
+              <th className="px-3 py-2">Brand</th>
+              <th className="px-3 py-2">Exporter</th>
+              <th className="px-3 py-2">Importer</th>
+              <th className="px-3 py-2">Origin</th>
+              <th className="px-3 py-2">Destination</th>
+              <th className="px-3 py-2">Weight (Kg)</th>
+              <th className="px-3 py-2">Amount ($)</th>
+              <th className="px-3 py-2">Unit Price</th>
+              <th className="px-3 py-2">Fraud Score</th>
+              <th className="px-3 py-2">Risk</th>
+              <th className="px-3 py-2">Reasons</th>
+            </tr>
 
-<td className="px-3 py-2">{r.Importer}</td>
+          </thead>
 
-<td className="px-3 py-2">{r["Origin Country"]}</td>
+          <tbody>
 
-<td className="px-3 py-2">{r["Destination Country"]}</td>
+            {filtered.slice(0, 500).map((r, i) => {
 
-<td className="px-3 py-2">
-{parseFloat(r["Weight(Kg)"]||0).toLocaleString()}
-</td>
+              const score = r.fraudScore || 0;
 
-<td className="px-3 py-2">
-${parseFloat(r["Amount($)"]||0).toLocaleString()}
-</td>
+              const rowColor =
+                score > 70
+                  ? "bg-red-100"
+                  : score > 40
+                  ? "bg-yellow-100"
+                  : "bg-green-50";
 
-<td className="px-3 py-2">
-{r["Unit Price($)"]||"-"}
-</td>
+              return (
 
-<td>{row.fraudScore}</td>
-<td className="font-bold">{row.fraudLevel}</td>
-<td className="text-xs">
-{row.reasons.join(", ")}
-</td>
+                <tr key={i} className={`border-t ${rowColor}`}>
 
-</tr>
+                  <td className="px-3 py-2">{r.Date}</td>
+                  <td className="px-3 py-2">{r.Brand}</td>
+                  <td className="px-3 py-2">{r.Exporter}</td>
+                  <td className="px-3 py-2">{r.Importer}</td>
+                  <td className="px-3 py-2">{r["Origin Country"]}</td>
+                  <td className="px-3 py-2">{r["Destination Country"]}</td>
 
-))}
+                  <td className="px-3 py-2">
+                    {parseFloat(r["Weight(Kg)"] || 0).toLocaleString()}
+                  </td>
 
-</tbody>
+                  <td className="px-3 py-2">
+                    ${parseFloat(r["Amount($)"] || 0).toLocaleString()}
+                  </td>
 
-</table>
+                  <td className="px-3 py-2">
+                    {getUnitPrice(r)}
+                  </td>
 
-</div>
+                  <td className="px-3 py-2 font-bold">
+                    {score}
+                  </td>
 
-</div>
+                  <td className="px-3 py-2 font-bold">
+                    {r.fraudLevel || "LOW"}
+                  </td>
 
-)
+                  <td className="px-3 py-2 text-xs">
+                    {(r.reasons || []).join(", ")}
+                  </td>
+
+                </tr>
+
+              );
+
+            })}
+
+          </tbody>
+
+        </table>
+
+      </div>
+
+    </div>
+  );
 
 }
