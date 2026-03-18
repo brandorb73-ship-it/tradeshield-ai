@@ -70,6 +70,9 @@ onChange={e=>setSearch(e.target.value)}
 <th className="px-3 py-2">Weight (Kg)</th>
 <th className="px-3 py-2">Amount ($)</th>
 <th className="px-3 py-2">Unit Price</th>
+<th>Fraud Score</th>
+<th>Risk</th>
+<th>Reasons</th>
 
 </tr>
 
@@ -103,6 +106,12 @@ ${parseFloat(r["Amount($)"]||0).toLocaleString()}
 
 <td className="px-3 py-2">
 {r["Unit Price($)"]||"-"}
+</td>
+
+<td>{row.fraudScore}</td>
+<td className="font-bold">{row.fraudLevel}</td>
+<td className="text-xs">
+{row.reasons.join(", ")}
 </td>
 
 </tr>
