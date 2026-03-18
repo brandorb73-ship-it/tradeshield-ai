@@ -413,29 +413,55 @@ Shell Score: {shellScores[entity]||0}
           )}
 
           {/* TAB: SELF TRADE */}
-          {activeTab === "self" && (
-              <div className="space-y-6 animate-in fade-in">
-                  {Object.entries(stats.selfAgg).map(([name, data]) => (
-                      <div key={name} className="bg-white p-10 rounded-[3rem] border-4 border-red-600 shadow-2xl">
-                          <div className="flex justify-between items-start mb-8">
-                              <h2 className="text-4xl font-black uppercase text-slate-900">{name}</h2>
-                              <span className="bg-red-600 text-white px-8 py-2 rounded-full font-black text-xl">SELF-TRADE NODE</span>
-                          </div>
-                          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-                              <StatBox label="Total Weight" val={`${data.weight.toFixed(1)} KG`} />
-                              <StatBox label="Total Quantity" val={data.qty.toLocaleString()} />
-                              <StatBox label="Countries Involved" val={data.countries.size} />
-                              <StatBox label="Financial Loop" val={`$${data.amount.toLocaleString()}`} />
-                          </div>
-                          <div className="mt-8 flex gap-2">
-                              {Array.from(data.countries).map(c => (
-                                  <span key={c} className="bg-slate-900 text-white px-4 py-2 rounded-xl text-sm font-black uppercase">{c}</span>
-                              ))}
-                          </div>
-                      </div>
-                  ))}
-              </div>
-          )}
+          {activeTab==="self" && (
+
+<div className="bg-white p-6 rounded-xl shadow">
+
+<h2 className="text-2xl font-bold mb-6">
+Self Trade Intelligence
+</h2>
+
+<div className="grid grid-cols-2 gap-6">
+
+<div>
+<h3 className="font-bold">Imports</h3>
+<div>Total Weight: {importsWeight}</div>
+<div>Total Quantity: {importsQty}</div>
+<div>Total Amount: ${importsAmt}</div>
+<div>Countries: {importCountries.join(", ")}</div>
+</div>
+
+<div>
+<h3 className="font-bold">Exports</h3>
+<div>Total Weight: {exportsWeight}</div>
+<div>Total Quantity: {exportsQty}</div>
+<div>Total Amount: ${exportsAmt}</div>
+<div>Countries: {exportCountries.join(", ")}</div>
+</div>
+
+</div>
+
+<div className="mt-6">
+
+<h3 className="font-bold">Analysis</h3>
+
+<div className="text-sm text-slate-700">
+
+• Compare import vs export volume mismatch  
+• Re-export patterns indicate possible diversion  
+• Same brand traded both ways suggests circular trade  
+
+Conclusion:
+
+Potential self-trade laundering or re-routing activity detected.
+
+</div>
+
+</div>
+
+</div>
+
+)}
 
           {/* TAB: FINANCIAL FORENSICS */}
           {activeTab==="finance" && (
