@@ -881,4 +881,5 @@ const AISummary = ({ title, content, icon: Icon }) => (
       {content}
     </div>
   </div>
-);
+);      
+};
