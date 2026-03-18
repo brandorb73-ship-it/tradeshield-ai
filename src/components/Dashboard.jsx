@@ -285,7 +285,7 @@ setStats({
   tobaccoSignals, 
   fraudProbability: fraudProb 
 });
-  
+  };
   return (
     <div className="min-h-screen bg-[#f8fafc] text-slate-900 pb-20 font-sans">
       <nav className="bg-[#020617] text-white py-6 px-8 shadow-2xl border-b-4 border-blue-600 sticky top-0 z-50">
