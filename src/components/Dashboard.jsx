@@ -434,25 +434,69 @@ Shell Score: {shellScores[entity]||0}
           )}
 
           {/* TAB: FINANCIAL FORENSICS */}
-          {activeTab === "finance" && (
-              <div className="bg-white p-12 rounded-[3rem] shadow-xl border-4 border-slate-900 animate-in zoom-in">
-                  <h2 className="text-3xl font-black uppercase mb-10">Amount Distribution Intelligence</h2>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-10">
-                      <div className="p-8 bg-emerald-50 rounded-3xl border-2 border-emerald-200 text-center">
-                          <div className="text-sm font-black uppercase mb-2">Micro-Trades (&lt;$1k)</div>
-                          <div className="text-5xl font-black text-emerald-700">{stats.amountBuckets.small}</div>
-                      </div>
-                      <div className="p-8 bg-blue-50 rounded-3xl border-2 border-blue-200 text-center">
-                          <div className="text-sm font-black uppercase mb-2">Mid-Tier ($1k-5k)</div>
-                          <div className="text-5xl font-black text-blue-700">{stats.amountBuckets.medium}</div>
-                      </div>
-                      <div className="p-8 bg-purple-50 rounded-3xl border-2 border-purple-200 text-center">
-                          <div className="text-sm font-black uppercase mb-2">High-Value (&gt;$5k)</div>
-                          <div className="text-5xl font-black text-purple-700">{stats.amountBuckets.large}</div>
-                      </div>
-                  </div>
-              </div>
-          )}
+          {activeTab==="finance" && (
+
+<div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+
+<div className="bg-white p-6 rounded-2xl shadow">
+
+<h3 className="font-bold text-xl mb-4">
+Value Concentration
+</h3>
+
+<div>
+
+Top 5 entities control majority of trade value.
+
+</div>
+
+</div>
+
+<div className="bg-white p-6 rounded-2xl shadow">
+
+<h3 className="font-bold text-xl mb-4">
+Price Variance
+</h3>
+
+<div>
+
+High price spread indicates customs value manipulation.
+
+</div>
+
+</div>
+
+<div className="bg-white p-6 rounded-2xl shadow">
+
+<h3 className="font-bold text-xl mb-4">
+Revenue Density
+</h3>
+
+<div>
+
+Value per KG analysis highlights suspicious shipments.
+
+</div>
+
+</div>
+
+<div className="bg-white p-6 rounded-2xl shadow">
+
+<h3 className="font-bold text-xl mb-4">
+High-Risk Transactions
+</h3>
+
+<div>
+
+Transactions involving flagged entities highlighted.
+
+</div>
+
+</div>
+
+</div>
+
+)}
 
           {/* TAB: MAP INTEL */}
           {activeTab === "map" && (
