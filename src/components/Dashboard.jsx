@@ -17,6 +17,7 @@ import detectPhantomExporter from "../analytics/phantomExporter";
 import detectPriceFraud from "../analytics/priceFraud";
 import {calculateFraudProbability} from "../analytics/fraudProbability";
 import { financialAnalysis } from "../analytics/financialAnalysis";
+import detectUTurnTrade from "../analytics/uTurnTrade";
 import generateNarrative from "../analytics/aiNarrative";
 
 export default function Dashboard() {
@@ -80,16 +81,18 @@ const fin = useMemo(() => {
     let totalAmt = 0;
     const fraudProb = calculateFraudProbability(rawData);
 // NEW FRAUD DETECTIONS
+const uTurnEntities = detectUTurnTrade(rawData);
 const vatEntities = detectVATCarousel(rawData);
 const phantomEntities = detectPhantomExporter(rawData);
 const priceEntities = detectPriceFraud(rawData);
 
 const mlScores = runFraudEngine(rawData);
-
+const fraudProb = calculateFraudProbability(rawData);
 setFraudStats({
   vat: vatEntities,
   phantom: phantomEntities,
   price: priceEntities,
+  uturn: uTurnEntities,
   mlScores
 });
     rawData.forEach(row => {
@@ -186,9 +189,20 @@ setFraudStats({
         _isPrice: (parseVal(r['Amount($)']) / (parseVal(r['Weight(Kg)']) || 1)) > brandAvgs[r.Brand] * 1.3
     })));
 
-    setStats({
-        totalWeight, totalAmt, entityStats, massBalance, routeIntel, hsAgg, selfAgg, amountBuckets, summary, brandAvgs, tobaccoSignals
-    });
+setStats({
+  totalWeight,
+  totalAmt,
+  entityStats,
+  massBalance,
+  routeIntel,
+  hsAgg,
+  selfAgg,
+  amountBuckets,
+  summary,
+  brandAvgs,
+  tobaccoSignals,
+  fraudProbability: fraudProb
+});
   };
 
   return (
@@ -539,7 +553,7 @@ Possible fraud:
 
     <div className="bg-slate-100 p-4 rounded-xl">
       <div className="text-sm text-slate-500">Median Price</div>
-      <div className="text-xl font-bold">${fin.medianPrice}</div>
+      <div className="text-xl font-bold">${fin.avgPrice?.toFixed(2)}</div>
     </div>
 
     <div className="bg-slate-100 p-4 rounded-xl">
@@ -608,6 +622,11 @@ Possible fraud:
 
           {/* TAB: MAP INTEL */}
           {activeTab === "map" && (
+  {activeTab==="heat" && (
+  <div className="bg-black p-6 rounded-2xl">
+    <RouteRiskMap data={data} fraudStats={fraudStats}/>
+  </div>
+)}
               <div className="bg-slate-900 p-12 rounded-[4rem] text-white animate-in fade-in">
                   <h2 className="text-3xl font-black uppercase mb-10 flex items-center gap-4"><Globe className="text-blue-500"/> Trade Corridor Density</h2>
                   <div className="space-y-4">
@@ -654,6 +673,16 @@ Possible fraud:
           )}
 
 {activeTab==="fraud" && (
+
+<div className="bg-black text-white p-4 rounded mb-6">
+
+<h3 className="font-bold">Fraud Probability Engine</h3>
+
+<div className="text-3xl font-black text-red-400">
+{stats.fraudProbability || 0}%
+</div>
+
+</div>
 
 <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
 
@@ -714,7 +743,33 @@ Typical phantom exporter pattern used in trade laundering.
 
 </div>
 
+<div className="bg-white p-6 rounded-2xl border shadow">
 
+<h3 className="font-bold text-xl mb-4">
+U-Turn Trade
+</h3>
+
+{fraudStats.uturn?.map(e=>(
+
+<div key={e} className="mb-4">
+
+<div className="font-bold text-yellow-700">{e}</div>
+
+<div className="text-sm text-slate-600">
+
+Evidence:
+Goods return to origin country after export.
+
+Reason:
+Classic circular routing used in laundering schemes.
+
+</div>
+
+</div>
+
+))}
+
+</div>
 <div className="bg-white p-6 rounded-2xl border shadow">
 
 <h3 className="font-bold text-xl mb-4">
