@@ -79,7 +79,7 @@ const fin = useMemo(() => {
     const tobaccoSignals=detectTobaccoFraud(rawData);
     let totalWeight = 0;
     let totalAmt = 0;
-    const fraudProb = calculateFraudProbability(rawData);
+    
 // NEW FRAUD DETECTIONS
 const uTurnEntities = detectUTurnTrade(rawData);
 const vatEntities = detectVATCarousel(rawData);
@@ -678,131 +678,89 @@ Possible fraud:
 
 {activeTab==="fraud" && (
 
-<div className="bg-black text-white p-4 rounded mb-6">
+<div> {/* ✅ SINGLE ROOT WRAPPER */}
 
-<h3 className="font-bold">Fraud Probability Engine</h3>
+  {/* FRAUD PROBABILITY */}
+  <div className="bg-black text-white p-4 rounded mb-6">
 
-<div className="text-3xl font-black text-red-400">
-{stats.fraudProbability || 0}%
-</div>
-{/* DEBUG */}
-</div>
+    <h3 className="font-bold">Fraud Probability Engine</h3>
 
-<div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+    <div className="text-3xl font-black text-red-400">
+      {stats.fraudProbability || 0}%
+    </div>
 
-<div className="bg-white p-6 rounded-2xl border shadow">
+  </div>
 
-<h3 className="font-bold text-xl mb-4">
-VAT Carousel Entities
-</h3>
+  {/* GRID */}
+  <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
 
-{fraudStats.vat.map(e=>(
+    {/* VAT */}
+    <div className="bg-white p-6 rounded-2xl border shadow">
+      <h3 className="font-bold text-xl mb-4">VAT Carousel Entities</h3>
 
-<div key={e} className="mb-4">
+      {fraudStats.vat.map(e=>(
+        <div key={e} className="mb-4">
+          <div className="font-bold text-red-700">{e}</div>
+          <div className="text-sm text-slate-600">
+            Evidence: Circular trade loop detected  
+            Reason: Exporter also receives same product
+          </div>
+        </div>
+      ))}
 
-<div className="font-bold text-red-700">{e}</div>
+    </div>
 
-<div className="text-sm text-slate-600">
+    {/* PHANTOM */}
+    <div className="bg-white p-6 rounded-2xl border shadow">
+      <h3 className="font-bold text-xl mb-4">Phantom Exporters</h3>
 
-Evidence:
-Appears in circular trade loop detected by graph analysis.
+      {fraudStats.phantom.map(e=>(
+        <div key={e} className="mb-4">
+          <div className="font-bold text-purple-700">{e}</div>
+          <div className="text-sm text-slate-600">
+            Evidence: High value, low shipment count  
+            Reason: Trade laundering pattern
+          </div>
+        </div>
+      ))}
 
-Reason:
-Exporter also receives same product from downstream importer.
+    </div>
 
-</div>
+    {/* U-TURN */}
+    <div className="bg-white p-6 rounded-2xl border shadow">
+      <h3 className="font-bold text-xl mb-4">U-Turn Trade</h3>
 
-</div>
+      {fraudStats.uturn?.map(e=>(
+        <div key={e} className="mb-4">
+          <div className="font-bold text-yellow-700">{e}</div>
+          <div className="text-sm text-slate-600">
+            Evidence: Goods return to origin  
+            Reason: Circular laundering route
+          </div>
+        </div>
+      ))}
 
-))}
+    </div>
 
-</div>
+    {/* PRICE */}
+    <div className="bg-white p-6 rounded-2xl border shadow">
+      <h3 className="font-bold text-xl mb-4">Price Manipulation</h3>
 
+      {fraudStats.price.map(e=>(
+        <div key={e} className="mb-4">
+          <div className="font-bold text-blue-700">{e}</div>
+          <div className="text-sm text-slate-600">
+            Evidence: Price deviation  
+            Reason: Customs value manipulation
+          </div>
+        </div>
+      ))}
 
-<div className="bg-white p-6 rounded-2xl border shadow">
+    </div>
 
-<h3 className="font-bold text-xl mb-4">
-Phantom Exporters
-</h3>
+  </div>
 
-{fraudStats.phantom.map(e=>(
-
-<div key={e} className="mb-4">
-
-<div className="font-bold text-purple-700">{e}</div>
-
-<div className="text-sm text-slate-600">
-
-Evidence:
-High trade value with extremely low shipment count.
-
-Reason:
-Typical phantom exporter pattern used in trade laundering.
-
-</div>
-
-</div>
-
-))}
-
-</div>
-
-<div className="bg-white p-6 rounded-2xl border shadow">
-
-<h3 className="font-bold text-xl mb-4">
-U-Turn Trade
-</h3>
-
-{fraudStats.uturn?.map(e=>(
-
-<div key={e} className="mb-4">
-
-<div className="font-bold text-yellow-700">{e}</div>
-
-<div className="text-sm text-slate-600">
-
-Evidence:
-Goods return to origin country after export.
-
-Reason:
-Classic circular routing used in laundering schemes.
-
-</div>
-
-</div>
-
-))}
-
-</div>
-<div className="bg-white p-6 rounded-2xl border shadow">
-
-<h3 className="font-bold text-xl mb-4">
-Price Manipulation
-</h3>
-
-{fraudStats.price.map(e=>(
-
-<div key={e} className="mb-4">
-
-<div className="font-bold text-blue-700">{e}</div>
-
-<div className="text-sm text-slate-600">
-
-Evidence:
-Unit price deviates significantly from dataset median.
-
-Reason:
-Possible customs value manipulation.
-
-</div>
-
-</div>
-
-))}
-
-</div>
-
-</div>
+</div>  {/* ✅ END WRAPPER */}
 
 )}
 
