@@ -165,12 +165,25 @@ get _effectivePrice() {
     else if (amt < 5000) amountBuckets.medium++;
     else amountBuckets.large++;
 
-    // Ensure entities exist
-    [exp, imp].forEach(e => {
-      if (!entityStats[e]) entityStats[e] = { self: 0, hs: 0, price: 0, total: 0, uTurns: 0 };
-    });
+// Ensure entities exist with ALL fields initialized to 0
+[exp, imp].forEach(e => {
+  if (!entityStats[e]) {
+    entityStats[e] = { 
+      self: 0, 
+      hs: 0, 
+      price: 0, 
+      total: 0, 
+      uTurns: 0,
+      // Add these two for the ERS Tab Forensic Evidence
+      priceAnomaly: 0, 
+      transactions: 0 
+    };
+  }
+});
 
-    entityStats[exp].total += 1;
+// Increment the exporter's activity
+entityStats[exp].total += 1;
+entityStats[exp].transactions += 1; // Used for the "Clean Invoices" math
 
     // HS aggregation
     const hsKey = `${exp}|${brand}|${hs}`;
@@ -221,24 +234,21 @@ get _effectivePrice() {
     brandAvgs[b] = brandPrices[b].reduce((a, c) => a + c, 0) / brandPrices[b].length;
   });
 
-// 5️⃣ Flag price anomalies safely
+// 5️⃣ Flag price anomalies and update ERS counters
 cleanedData.forEach(r => {
   const exp = r.Exporter;
   const brand = r.Brand;
-  
-  // Use the effective price we calculated in Step 1
   const p = r._effectivePrice; 
   const avg = brandAvgs[brand] || 0;
 
-  // Perform the check
   if (avg > 0 && (p > avg * 1.3 || p < avg * 0.7)) {
-    // 1. Update the running tally for the ERS score cards
+    r._isPrice = true;
+    
+    // Increment the counters for the ERS Score Tab
     if (entityStats[exp]) {
       entityStats[exp].price += 1;
+      entityStats[exp].priceAnomaly += 1; // This removes the NaN
     }
-    
-    // 2. Attach the flag directly to the row for the Table UI
-    r._isPrice = true; 
   } else {
     r._isPrice = false;
   }
@@ -487,23 +497,52 @@ AI Intelligence Summary
     </div>
 
     {/* 2. THE AI SUMMARY (Place this OUTSIDE the map, at the very bottom) */}
-    <AISummary 
-      title="AI Forensic Summary"
-      icon={Brain}
-      content={
-        <>
-          Analysis detected that several transactions lacked a declared <span className="font-bold underline text-blue-800">Unit Price($)</span>. 
-          The system auto-calculated values based on <span className="italic">Total Amount / Weight</span> to fill these gaps. 
-          <br/><br/>
-          <span className="bg-white px-2 py-1 rounded border border-blue-100 shadow-sm">
-            <span className="text-red-600 font-black">ALERT:</span> {entityERS.filter(e => e.priceAnomaly > 0).length} entities 
-            show prices deviating significantly from the brand median.
+<AISummary 
+  title="AI Forensic Summary"
+  icon={Brain}
+  content={
+    <>
+      <p className="mb-4">
+        Analysis detected that several transactions lacked a declared <span className="font-bold underline text-blue-800">Unit Price($)</span>. 
+        The system auto-calculated values based on <span className="italic">Total Amount / Weight</span> to fill these gaps.
+      </p>
+      
+      <div className="bg-white px-4 py-3 rounded-xl border border-blue-100 shadow-sm">
+        <span className="text-red-600 font-black mr-2">ALERT:</span>
+        <span className="font-bold text-slate-900">
+          {entityERS.filter(e => e.priceAnomaly > 0).length} entities
+        </span> show prices deviating significantly from the brand median. 
+        {entityERS.filter(e => e.priceAnomaly > 0).length > 0 && (
+          <span className="text-slate-600 ml-1">
+            Top risk: <span className="uppercase font-black">{entityERS.find(e => e.priceAnomaly > 0)?.name}</span>.
           </span>
-        </>
+        )}
+      </div>
+    </>
       }
-    />
+/>
+    {/* METHODOLOGY FOOTER */}
+<div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6 border-t-2 border-slate-100 pt-8">
+  <div>
+    <h4 className="text-[10px] font-black uppercase text-slate-400 mb-2 tracking-widest">What is ERS?</h4>
+    <p className="text-xs text-slate-600 leading-relaxed">
+      <strong>Entity Risk Scoring</strong> is a weighted forensic index (0-100) that aggregates suspicious trade patterns like self-trading, HS mismatches, and price manipulation.
+    </p>
   </div>
-)}
+  <div>
+    <h4 className="text-[10px] font-black uppercase text-slate-400 mb-2 tracking-widest">Brand Median Logic</h4>
+    <p className="text-xs text-slate-600 leading-relaxed">
+      The system calculates a global baseline price for each brand by auditing the <strong>Total Value vs Total Weight</strong> across all shipments in the current dataset.
+    </p>
+  </div>
+  <div>
+    <h4 className="text-[10px] font-black uppercase text-slate-400 mb-2 tracking-widest">Anomaly Detection</h4>
+    <p className="text-xs text-slate-600 leading-relaxed">
+      Transactions are flagged if the unit price deviates by <strong>±30%</strong> from the brand median, a primary indicator of potential tax circumvention or capital flight.
+    </p>
+  </div>
+</div>
+
           {/* TAB: MASS BALANCE */}
           {activeTab === "mass" && (
               <div className="bg-white p-12 rounded-[3rem] shadow-2xl border-4 border-slate-900 animate-in fade-in">
