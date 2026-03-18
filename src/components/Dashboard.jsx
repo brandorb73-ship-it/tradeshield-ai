@@ -28,6 +28,8 @@ export default function Dashboard() {
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState("audit");
   const [stats, setStats] = useState({});
+  const ersScores = {};
+const shellScores = {};
 const [fraudStats, setFraudStats] = useState({
   vat: [],
   phantom: [],
@@ -90,11 +92,11 @@ const priceEntities = detectPriceFraud(rawData);
 const mlScores = runFraudEngine(rawData);
 const fraudProb = calculateFraudProbability(rawData);
 setFraudStats({
-  vat: vatEntities,
-  phantom: phantomEntities,
-  price: priceEntities,
-  uturn: uTurnEntities,
-  mlScores
+  vat: [],
+  phantom: [],
+  price: [],
+  uturn: [],
+  mlScores: {}
 });
     rawData.forEach(row => {
         const exp = row.Exporter;
@@ -253,7 +255,7 @@ CLEAR
           <div className="flex flex-wrap gap-2 mb-10 bg-slate-200 p-2 rounded-3xl shadow-inner overflow-x-auto border-2 border-slate-300">
             <TabBtn active={activeTab === 'audit'} onClick={() => setActiveTab('audit')} icon={<ListFilter size={18}/>} label="Shipment Ledger" />
 
-<TabBtn active={activeTab === 'network'} onClick={() => setActiveTab('network')} icon={<Network size={18}/>} label="ERS Risk Score" />
+<TabBtn active={activeTab === 'ers'} onClick={() => setActiveTab('ers')} icon={<Activity size={18}/>} label="ERS Score" />
 
 <TabBtn active={activeTab === 'networkGraph'} onClick={() => setActiveTab('networkGraph')} icon={<Activity size={18}/>} label="Trade Network" />
 
@@ -370,59 +372,47 @@ AI Intelligence Summary
 )}
 
           {/* TAB: ERS SCORING */}
-setActiveTab('ers')
+{/* TAB: ERS SCORING */}
+{activeTab === "ers" && (
 
-<div className="bg-white p-8 rounded-2xl shadow">
+  <div className="bg-white p-8 rounded-2xl shadow">
 
-<h2 className="text-2xl font-black mb-6">
-Entity Risk Scoring (ERS)
-</h2>
+    <h2 className="text-2xl font-black mb-6">
+      Entity Risk Scoring (ERS)
+    </h2>
 
-<div className="mb-6 text-slate-700">
+    <div className="mb-6 text-slate-700">
+      ERS Score Calculation
 
-ERS Score Calculation
+      <br/>• 30% Fraud Signals  
+      <br/>• 25% Network Centrality  
+      <br/>• 20% Price Manipulation  
+      <br/>• 15% Shell Probability  
+      <br/>• 10% Corridor Risk
+    </div>
 
-• 30% Fraud Signals  
-• 25% Network Centrality  
-• 20% Price Manipulation  
-• 15% Shell Probability  
-• 10% Corridor Risk
+    {Object.entries(ersScores || {}).map(([entity, score]) => (
 
-</div>
+      <div key={entity} className="border-b py-3 flex justify-between">
 
-{Object.entries(ersScores).map(([entity,score])=>(
+        <div>
+          <div className="font-bold">{entity}</div>
+          <div className="text-sm text-slate-600">
+            Evidence: Shell Score: {shellScores?.[entity] || 0}
+          </div>
+        </div>
 
-<div key={entity}
-className="border-b py-3 flex justify-between">
+        <div className="font-black text-lg">
+          {score}
+        </div>
 
-<div>
+      </div>
 
-<div className="font-bold">{entity}</div>
+    ))}
 
-<div className="text-sm text-slate-600">
-
-Evidence:
-
-Shell Score: {shellScores[entity]||0}
-
-</div>
-
-</div>
-
-<div className="font-black text-lg">
-
-{score}
-
-</div>
-
-</div>
-
-))}
-
-</div>
+  </div>
 
 )}
-
           {/* TAB: MASS BALANCE */}
           {activeTab === "mass" && (
               <div className="bg-white p-12 rounded-[3rem] shadow-2xl border-4 border-slate-900 animate-in fade-in">
