@@ -27,6 +27,23 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState("audit");
+  const filteredData = useMemo(() => {
+  if (activeFilter === "all") return data;
+  return data.filter(d => {
+    if (activeFilter === "self") return d._isSelf;
+    if (activeFilter === "hs") return d._isHS;
+    if (activeFilter === "price") return d._isPrice;
+    return true;
+  });
+}, [data, activeFilter]);
+
+const visibleTotals = useMemo(() => {
+  return filteredData.reduce((acc, row) => {
+    acc.weight += parseFloat(row["Weight(Kg)"] || 0);
+    acc.amount += parseFloat(row["Amount($)"] || 0);
+    return acc;
+  }, { weight: 0, amount: 0 });
+}, [filteredData]);
   const [stats, setStats] = useState({});
   const ersScores = {};
 const shellScores = {};
@@ -315,51 +332,76 @@ className="mb-4 p-2 border rounded"
 <option value="price">Price Fraud</option>
 </select>
                     <table className="w-full text-left">
-                        <thead className="bg-slate-900 text-white text-xs font-black uppercase">
-                            <tr>
-                                <th className="p-5">Risk Flag</th>
-                                <th className="p-5">Date</th>
-                                <th className="p-5">Entity Involved</th>
-                                <th className="p-5">Brand / HS</th>
-                                <th className="p-5">Route</th>
-                                <th className="p-5 text-right">Weight (Kg)</th>
-                                <th className="p-5 text-right">Amount ($)</th>
-                            </tr>
-                        </thead>
+                      <thead className="bg-slate-900 text-white text-xs font-black uppercase">
+  <tr>
+    <th className="p-5">
+      <div className="flex flex-col gap-2">
+        <span>Risk Flag</span>
+        <select 
+          value={activeFilter}
+          onChange={(e) => setActiveFilter(e.target.value)}
+          className="bg-slate-800 text-blue-400 border border-slate-700 rounded px-2 py-1 text-[10px] focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
+        >
+          <option value="all">ALL SHIPMENTS</option>
+          <option value="self">SELF TRADE</option>
+          <option value="hs">HS MISMATCH</option>
+          <option value="price">PRICE ANOMALY</option>
+        </select>
+      </div>
+    </th>
+    <th className="p-5">Date</th>
+    <th className="p-5">Entity Involved</th>
+    <th className="p-5">Brand / HS</th>
+    <th className="p-5">Route</th>
+    <th className="p-5 text-right">Weight (Kg)</th>
+    <th className="p-5 text-right">Amount ($)</th>
+  </tr>
+</thead>
                         <tbody className="divide-y-2 divide-slate-100 text-slate-800 font-bold">
-                            {data.map((row, i) => (
-                                <tr key={i} className={row._isSelf ? 'bg-red-50' : ''}>
-                                    <td className="p-5">
-                                        <div className="flex gap-1">
-                                            {row._isSelf && <span className="bg-red-700 text-white text-[10px] px-2 py-1 rounded">SELF</span>}
-                                            {row._isHS && <span className="bg-orange-600 text-white text-[10px] px-2 py-1 rounded">HS</span>}
-                                            {row._isPrice && <span className="bg-purple-700 text-white text-[10px] px-2 py-1 rounded">PRICE</span>}
-                                        </div>
-                                    </td>
-                                    <td className="p-5 text-sm">{row.Date}</td>
-                                    <td className="p-5">
-                                        <div className="text-base font-black uppercase">{row.Exporter}</div>
-                                        <div className="text-xs text-blue-700 uppercase">To: {row.Importer}</div>
-                                    </td>
-                                    <td className="p-5">
-                                        <div className="text-base uppercase">{row.Brand}</div>
-                                        <div className="text-xs text-slate-700">HS: {row['HS Code']}</div>
-                                    </td>
-                                    <td className="p-5">
-                                        <div className="text-xs flex items-center gap-1 uppercase"><MapPin size={12}/> {row['Origin Country']} &rarr; {row['Destination Country']}</div>
-                                    </td>
-                                    <td className="p-5 text-right text-base font-black">{row['Weight(Kg)']}</td>
-                                    <td className="p-5 text-right text-lg font-black text-slate-900">${row['Amount($)']}</td>
-                                </tr>
-                            ))}
-                        </tbody>
-                        <tfoot className="bg-slate-100 border-t-4 border-slate-900 font-black text-slate-900 uppercase">
-                            <tr>
-                                <td colSpan="5" className="p-6 text-right text-xl">Total Audit Volume:</td>
-                                <td className="p-6 text-right text-2xl">{stats.totalWeight?.toFixed(2)} KG</td>
-                                <td className="p-6 text-right text-3xl text-red-700">${stats.totalAmt?.toLocaleString()}</td>
-                            </tr>
-                        </tfoot>
+  {filteredData.map((row, i) => (
+    <tr key={i} className={`${row._isSelf ? 'bg-red-50' : 'hover:bg-slate-50'} transition-colors`}>
+      <td className="p-5">
+        <div className="flex gap-1">
+          {row._isSelf && <span className="bg-red-700 text-white text-[10px] px-2 py-1 rounded">SELF</span>}
+          {row._isHS && <span className="bg-orange-600 text-white text-[10px] px-2 py-1 rounded">HS</span>}
+          {row._isPrice && <span className="bg-purple-700 text-white text-[10px] px-2 py-1 rounded">PRICE</span>}
+        </div>
+      </td>
+      <td className="p-5 text-sm">{row.Date}</td>
+      <td className="p-5">
+        <div className="text-base font-black uppercase">{row.Exporter}</div>
+        <div className="text-xs text-blue-700 uppercase">To: {row.Importer}</div>
+      </td>
+      <td className="p-5">
+        <div className="text-base uppercase">{row.Brand}</div>
+        <div className="text-xs text-slate-700">HS: {row['HS Code']}</div>
+      </td>
+      <td className="p-5">
+        <div className="text-xs flex items-center gap-1 uppercase">
+          <MapPin size={12}/> {row['Origin Country']} &rarr; {row['Destination Country']}
+        </div>
+      </td>
+      <td className="p-5 text-right text-base font-black">{row['Weight(Kg)']}</td>
+      <td className="p-5 text-right text-lg font-black text-slate-900">
+        ${(row['Amount($)'] || 0).toLocaleString()}
+      </td>
+    </tr>
+  ))}
+</tbody>
+
+<tfoot className="bg-slate-100 border-t-4 border-slate-900 font-black text-slate-900 uppercase">
+  <tr>
+    <td colSpan="5" className="p-6 text-right text-xl">
+      {activeFilter !== 'all' ? `${activeFilter} Total:` : 'Total Audit Volume:'}
+    </td>
+    <td className="p-6 text-right text-2xl">
+      {visibleTotals.weight.toFixed(2)} KG
+    </td>
+    <td className="p-6 text-right text-3xl text-red-700">
+      ${visibleTotals.amount.toLocaleString()}
+    </td>
+  </tr>
+</tfoot>
                     </table>
                 </div>
             </div>
