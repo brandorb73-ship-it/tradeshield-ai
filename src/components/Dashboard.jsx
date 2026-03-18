@@ -68,170 +68,159 @@ const fin = useMemo(() => {
   };
 
 const analyzeFraud = (rawData) => {
-    // 1. Pre-filter out empty or invalid rows to prevent crashes
-    const validData = rawData.filter(row => row.Exporter && row.Importer && row.Brand);
-    
-    const parseVal = (v) => {
-      if (!v) return 0;
-      const n = parseFloat(v.toString().replace(/[^0-9.]/g, ''));
-      return isNaN(n) ? 0 : n;
-    };
-
-    // --- LOGIC CONTAINERS ---
-    const brandToHS = {};
-    const entityStats = {};
-    const massBalance = {}; 
-    const routeIntel = {};
-    const hsAgg = {};
-    const selfAgg = {};
-    const amountBuckets = { small: 0, medium: 0, large: 0 };
-    const brandPrices = {};
-    
-    let totalWeight = 0;
-    let totalAmt = 0;
-
-    // 2. Initialize and Aggregate
-    validData.forEach(row => {
-        const exp = row.Exporter;
-        const imp = row.Importer;
-        const brand = row.Brand;
-        const hs = row['HS Code'];
-        const amt = parseVal(row['Amount($)']);
-        const weight = parseVal(row['Weight(Kg)']);
-        const qty = parseVal(row['Quantity']);
-        const origin = row['Origin Country'];
-        const dest = row['Destination Country'];
-        const unitPrice = weight > 0 ? amt / weight : 0;
-
-        totalWeight += weight;
-        totalAmt += amt;
-
-        // Financial Intelligence Bucketing
-        if (amt < 1000) amountBuckets.small++;
-        else if (amt < 5000) amountBuckets.medium++;
-        else amountBuckets.large++;
-
-        // SAFE INITIALIZATION: Ensure entity exists in the stats object
-        [exp, imp].forEach(e => {
-            if (e && !entityStats[e]) {
-                entityStats[e] = { self: 0, hs: 0, price: 0, total: 0, uTurns: 0 };
-            }
-        });
-        
-        if (exp) entityStats[exp].total += 1;
-
-        // HS Aggregation logic
-        const hsKey = `${exp}|${brand}|${hs}`;
-        if (!hsAgg[hsKey]) hsAgg[hsKey] = { entity: exp, brand, hs, weight: 0, amount: 0, count: 0 };
-        hsAgg[hsKey].weight += weight;
-        hsAgg[hsKey].amount += amt;
-        hsAgg[hsKey].count++;
-
-        // HS Mismatch Logic
-        if (!brandToHS[brand]) {
-            brandToHS[brand] = hs;
-        } else if (brandToHS[brand] !== hs && exp) {
-            entityStats[exp].hs += 1;
-        }
-
-        // Self-Trade Logic
-        if (exp === imp && exp) {
-            entityStats[exp].self += 1;
-            if (!selfAgg[exp]) selfAgg[exp] = { weight: 0, qty: 0, countries: new Set(), amount: 0 };
-            selfAgg[exp].weight += weight;
-            selfAgg[exp].qty += qty;
-            selfAgg[exp].amount += amt;
-            selfAgg[exp].countries.add(origin);
-            selfAgg[exp].countries.add(dest);
-        }
-
-        // Mass Balance
-        if (exp && !massBalance[exp]) massBalance[exp] = {};
-        if (exp && !massBalance[exp][brand]) massBalance[exp][brand] = { exp: 0, imp: 0 };
-        if (exp) massBalance[exp][brand].exp += weight;
-        
-        if (imp) {
-            if (!massBalance[imp]) massBalance[imp] = {};
-            if (!massBalance[imp][brand]) massBalance[imp][brand] = { exp: 0, imp: 0 };
-            massBalance[imp][brand].imp += weight;
-        }
-
-        // Route Intel
-        const routeKey = `${origin}->${dest}`;
-        if (!routeIntel[routeKey]) routeIntel[routeKey] = { weight: 0, amount: 0, entities: new Set() };
-        routeIntel[routeKey].weight += weight;
-        routeIntel[routeKey].amount += amt;
-        if (exp) routeIntel[routeKey].entities.add(exp);
-
-        // Price Baseline
-        if (brand) {
-            if (!brandPrices[brand]) brandPrices[brand] = [];
-            if (unitPrice > 0) brandPrices[brand].push(unitPrice);
-        }
-    });
-
-    // 3. Calculate Brand Averages
-    const brandAvgs = {};
-    Object.keys(brandPrices).forEach(b => {
-        const sum = brandPrices[b].reduce((acc, val) => acc + val, 0);
-        brandAvgs[b] = sum / brandPrices[b].length;
-    });
-
-    // 4. Post-Process for Price Anomalies (Fix for 'A INTERNATIONAL')
-    validData.forEach(r => {
-        const exp = r.Exporter;
-        const brand = r.Brand;
-        const p = parseVal(r['Amount($)']) / (parseVal(r['Weight(Kg)']) || 1);
-        
-        // Final guard to ensure exp and brand exist in our calculated maps
-        if (exp && entityStats[exp] && brandAvgs[brand]) {
-            const avg = brandAvgs[brand];
-            if (p > avg * 1.3 || p < avg * 0.7) {
-                entityStats[exp].price += 1;
-            }
-        }
-    });
-
-    // 5. Run External Fraud Engines (Safely)
-    const tobaccoSignals = typeof detectTobaccoFraud === 'function' ? detectTobaccoFraud(validData) : [];
-    const uTurnEntities = typeof detectUTurnTrade === 'function' ? detectUTurnTrade(validData) : [];
-    const vatEntities = typeof detectVATCarousel === 'function' ? detectVATCarousel(validData) : [];
-    const phantomEntities = typeof detectPhantomExporter === 'function' ? detectPhantomExporter(validData) : [];
-    const priceEntities = typeof detectPriceFraud === 'function' ? detectPriceFraud(validData) : [];
-    const mlScores = typeof runFraudEngine === 'function' ? runFraudEngine(validData) : {};
-    const fraudProb = typeof calculateFraudProbability === 'function' ? calculateFraudProbability(validData) : 0;
-
-    // 6. Final State Updates
-    setData(validData.map(r => ({
-        ...r,
-        _isSelf: r.Exporter === r.Importer,
-        _isHS: brandToHS[r.Brand] !== r['HS Code'],
-        _isPrice: (parseVal(r['Amount($)']) / (parseVal(r['Weight(Kg)']) || 1)) > (brandAvgs[r.Brand] || 0) * 1.3
-    })));
-
-    setFraudStats({
-        vat: vatEntities,
-        phantom: phantomEntities,
-        price: priceEntities,
-        uturn: uTurnEntities,
-        mlScores: mlScores
-    });
-
-    setStats({
-        totalWeight,
-        totalAmt,
-        entityStats,
-        massBalance,
-        routeIntel,
-        hsAgg,
-        selfAgg,
-        amountBuckets,
-        brandAvgs,
-        tobaccoSignals,
-        fraudProbability: fraudProb
-    });
+  const parseVal = (v) => {
+    if (!v) return 0;
+    const n = parseFloat(v.toString().replace(/[^0-9.]/g, ""));
+    return isNaN(n) ? 0 : n;
   };
 
+  // 1️⃣ Clean data and normalize critical fields
+  const cleanedData = rawData.map(row => {
+    const cleanRow = {};
+    Object.keys(row).forEach(k => {
+      const key = k.trim();
+      cleanRow[key] = typeof row[k] === "string" ? row[k].trim() : row[k];
+    });
+    return {
+      Exporter: cleanRow["Exporter"] || "UNKNOWN",
+      Importer: cleanRow["Importer"] || "UNKNOWN",
+      Brand: cleanRow["Brand"] || "UNKNOWN",
+      "HS Code": cleanRow["HS Code"] || "UNKNOWN",
+      "Amount($)": parseVal(cleanRow["Amount($)"]),
+      "Weight(Kg)": parseVal(cleanRow["Weight(Kg)"]),
+      Quantity: parseVal(cleanRow["Quantity"]),
+      "Origin Country": cleanRow["Origin Country"] || "UNKNOWN",
+      "Destination Country": cleanRow["Destination Country"] || "UNKNOWN",
+      Date: cleanRow["Date"] || ""
+    };
+  });
+
+  // 2️⃣ Initialize containers
+  const entityStats = {};
+  const hsAgg = {};
+  const massBalance = {};
+  const selfAgg = {};
+  const routeIntel = {};
+  const brandPrices = {};
+  const brandToHS = {};
+  const amountBuckets = { small: 0, medium: 0, large: 0 };
+  let totalWeight = 0;
+  let totalAmt = 0;
+
+  // 3️⃣ Aggregate
+  cleanedData.forEach(r => {
+    const exp = r.Exporter;
+    const imp = r.Importer;
+    const brand = r.Brand;
+    const hs = r["HS Code"];
+    const amt = r["Amount($)"];
+    const weight = r["Weight(Kg)"];
+    const qty = r.Quantity;
+    const origin = r["Origin Country"];
+    const dest = r["Destination Country"];
+    const unitPrice = weight > 0 ? amt / weight : 0;
+
+    totalWeight += weight;
+    totalAmt += amt;
+
+    // Financial bucket
+    if (amt < 1000) amountBuckets.small++;
+    else if (amt < 5000) amountBuckets.medium++;
+    else amountBuckets.large++;
+
+    // Ensure entities exist
+    [exp, imp].forEach(e => {
+      if (!entityStats[e]) entityStats[e] = { self: 0, hs: 0, price: 0, total: 0, uTurns: 0 };
+    });
+
+    entityStats[exp].total += 1;
+
+    // HS aggregation
+    const hsKey = `${exp}|${brand}|${hs}`;
+    if (!hsAgg[hsKey]) hsAgg[hsKey] = { entity: exp, brand, hs, weight: 0, amount: 0, count: 0 };
+    hsAgg[hsKey].weight += weight;
+    hsAgg[hsKey].amount += amt;
+    hsAgg[hsKey].count++;
+
+    // HS mismatch
+    if (!brandToHS[brand]) brandToHS[brand] = hs;
+    else if (brandToHS[brand] !== hs) entityStats[exp].hs += 1;
+
+    // Self-trade
+    if (exp === imp) {
+      entityStats[exp].self += 1;
+      if (!selfAgg[exp]) selfAgg[exp] = { weight: 0, qty: 0, countries: new Set(), amount: 0 };
+      selfAgg[exp].weight += weight;
+      selfAgg[exp].qty += qty;
+      selfAgg[exp].amount += amt;
+      selfAgg[exp].countries.add(origin);
+      selfAgg[exp].countries.add(dest);
+    }
+
+    // Mass balance
+    if (!massBalance[exp]) massBalance[exp] = {};
+    if (!massBalance[exp][brand]) massBalance[exp][brand] = { exp: 0, imp: 0 };
+    massBalance[exp][brand].exp += weight;
+
+    if (!massBalance[imp]) massBalance[imp] = {};
+    if (!massBalance[imp][brand]) massBalance[imp][brand] = { exp: 0, imp: 0 };
+    massBalance[imp][brand].imp += weight;
+
+    // Route Intel
+    const routeKey = `${origin}->${dest}`;
+    if (!routeIntel[routeKey]) routeIntel[routeKey] = { weight: 0, amount: 0, entities: new Set() };
+    routeIntel[routeKey].weight += weight;
+    routeIntel[routeKey].amount += amt;
+    routeIntel[routeKey].entities.add(exp);
+
+    // Brand prices
+    if (!brandPrices[brand]) brandPrices[brand] = [];
+    if (unitPrice > 0) brandPrices[brand].push(unitPrice);
+  });
+
+  // 4️⃣ Calculate brand averages
+  const brandAvgs = {};
+  Object.keys(brandPrices).forEach(b => {
+    brandAvgs[b] = brandPrices[b].reduce((a, c) => a + c, 0) / brandPrices[b].length;
+  });
+
+  // 5️⃣ Flag price anomalies safely
+  cleanedData.forEach(r => {
+    const exp = r.Exporter;
+    const brand = r.Brand;
+    const p = r["Weight(Kg)"] > 0 ? r["Amount($)"] / r["Weight(Kg)"] : 0;
+    const avg = brandAvgs[brand] || 0;
+    if (avg > 0 && p > avg * 1.3 || p < avg * 0.7) {
+      entityStats[exp].price += 1;
+    }
+  });
+
+  // 6️⃣ Run external fraud engines safely
+  let tobaccoSignals = [], uTurnEntities = [], vatEntities = [], phantomEntities = [], priceEntities = [], mlScores = {}, fraudProb = 0;
+  try { tobaccoSignals = detectTobaccoFraud(cleanedData); } catch(e){ console.error(e); }
+  try { uTurnEntities = detectUTurnTrade(cleanedData); } catch(e){ console.error(e); }
+  try { vatEntities = detectVATCarousel(cleanedData); } catch(e){ console.error(e); }
+  try { phantomEntities = detectPhantomExporter(cleanedData); } catch(e){ console.error(e); }
+  try { priceEntities = detectPriceFraud(cleanedData); } catch(e){ console.error(e); }
+  try { mlScores = runFraudEngine(cleanedData); } catch(e){ console.error(e); }
+  try { fraudProb = calculateFraudProbability(cleanedData); } catch(e){ console.error(e); }
+
+  // 7️⃣ Update state safely
+  setData(cleanedData.map(r => ({
+    ...r,
+    _isSelf: r.Exporter === r.Importer,
+    _isHS: brandToHS[r.Brand] !== r["HS Code"],
+    _isPrice: (() => {
+      const avg = brandAvgs[r.Brand] || 0;
+      const p = r["Weight(Kg)"] > 0 ? r["Amount($)"] / r["Weight(Kg)"] : 0;
+      return avg > 0 && (p > avg * 1.3 || p < avg * 0.7);
+    })()
+  })));
+
+  setFraudStats({ vat: vatEntities, phantom: phantomEntities, price: priceEntities, uturn: uTurnEntities, mlScores });
+  setStats({ totalWeight, totalAmt, entityStats, massBalance, selfAgg, routeIntel, hsAgg, brandAvgs, amountBuckets, tobaccoSignals, fraudProbability: fraudProb });
+};
+  
   return (
     <div className="min-h-screen bg-[#f8fafc] text-slate-900 pb-20 font-sans">
       <nav className="bg-[#020617] text-white py-6 px-8 shadow-2xl border-b-4 border-blue-600 sticky top-0 z-50">
