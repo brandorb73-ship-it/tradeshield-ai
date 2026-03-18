@@ -24,13 +24,17 @@ export default function Dashboard() {
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState("audit");
   const [stats, setStats] = useState({});
-  const narrative = generateNarrative(stats, fraudStats);
 const [fraudStats, setFraudStats] = useState({
   vat: [],
   phantom: [],
   price: [],
   mlScores: {}
 });
+
+ const narrative = useMemo(() => {
+  return generateNarrative(stats, fraudStats);
+}, [stats, fraudStats]);
+  
   const handleFetch = () => {
     if (!urlInput) return;
     setLoading(true);
