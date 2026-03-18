@@ -27,23 +27,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState("audit");
-  const filteredData = useMemo(() => {
-  if (activeFilter === "all") return data;
-  return data.filter(d => {
-    if (activeFilter === "self") return d._isSelf;
-    if (activeFilter === "hs") return d._isHS;
-    if (activeFilter === "price") return d._isPrice;
-    return true;
-  });
-}, [data, activeFilter]);
-
-const visibleTotals = useMemo(() => {
-  return filteredData.reduce((acc, row) => {
-    acc.weight += parseFloat(row["Weight(Kg)"] || 0);
-    acc.amount += parseFloat(row["Amount($)"] || 0);
-    return acc;
-  }, { weight: 0, amount: 0 });
-}, [filteredData]);
+const [activeFilter, setActiveFilter] = useState("all");
   const [stats, setStats] = useState({});
   const ersScores = {};
 const shellScores = {};
@@ -53,6 +37,24 @@ const [fraudStats, setFraudStats] = useState({
   price: [],
   mlScores: {}
 });
+
+  const filteredData = useMemo(() => {
+    if (activeFilter === "all") return data;
+    return data.filter(d => {
+      if (activeFilter === "self") return d._isSelf;
+      if (activeFilter === "hs") return d._isHS;
+      if (activeFilter === "price") return d._isPrice;
+      return true;
+    });
+  }, [data, activeFilter]);
+
+  const visibleTotals = useMemo(() => {
+    return filteredData.reduce((acc, row) => {
+      acc.weight += parseFloat(row["Weight(Kg)"] || 0);
+      acc.amount += parseFloat(row["Amount($)"] || 0);
+      return acc;
+    }, { weight: 0, amount: 0 });
+  }, [filteredData]);
 const fin = useMemo(() => {
   return financialAnalysis(data);
 }, [data]);
