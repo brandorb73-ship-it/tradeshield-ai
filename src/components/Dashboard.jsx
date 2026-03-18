@@ -21,6 +21,17 @@ import detectUTurnTrade from "../analytics/uTurnTrade";
 import FraudIntelligenceCard from "./FraudIntelligenceCard";
 import generateNarrative from "../analytics/aiNarrative";
 
+const AISummary = ({ title, content, icon: Icon }) => (
+  <div className="bg-blue-50 border-2 border-blue-200 p-6 rounded-3xl mt-8">
+    <div className="flex items-center gap-2 mb-3 text-blue-900 font-black uppercase text-sm">
+      <Icon size={20} /> {title}
+    </div>
+    <div className="text-slate-700 text-sm leading-relaxed font-medium">
+      {content}
+    </div>
+  </div>
+);
+
 export default function Dashboard() {
   const [urlInput, setUrlInput] = useState("");
   const [data, setData] = useState([]);
@@ -254,21 +265,37 @@ cleanedData.forEach(r => {
   try { mlScores = runFraudEngine(cleanedData); } catch(e){ console.error(e); }
   try { fraudProb = calculateFraudProbability(cleanedData); } catch(e){ console.error(e); }
 
-  // 7️⃣ Update state safely
-  setData(cleanedData.map(r => ({
-    ...r,
-    _isSelf: r.Exporter === r.Importer,
-    _isHS: brandToHS[r.Brand] !== r["HS Code"],
-    _isPrice: (() => {
-      const avg = brandAvgs[r.Brand] || 0;
-      const p = r["Weight(Kg)"] > 0 ? r["Amount($)"] / r["Weight(Kg)"] : 0;
-      return avg > 0 && (p > avg * 1.3 || p < avg * 0.7);
-    })()
-  })));
+// 7️⃣ Update state safely
+// Since we already attached _isSelf, _isHS, and _isPrice in the loops above,
+// we just need to pass the cleanedData directly to the state.
+setData(cleanedData.map(r => ({
+  ...r,
+  _isSelf: r.Exporter === r.Importer,
+  _isHS: brandToHS[r.Brand] !== r["HS Code"]
+  // _isPrice is already attached from Step 5!
+})));
 
-  setFraudStats({ vat: vatEntities, phantom: phantomEntities, price: priceEntities, uturn: uTurnEntities, mlScores });
-  setStats({ totalWeight, totalAmt, entityStats, massBalance, selfAgg, routeIntel, hsAgg, brandAvgs, amountBuckets, tobaccoSignals, fraudProbability: fraudProb });
-};
+setFraudStats({ 
+  vat: vatEntities, 
+  phantom: phantomEntities, 
+  price: priceEntities, 
+  uturn: uTurnEntities, 
+  mlScores 
+});
+
+setStats({ 
+  totalWeight, 
+  totalAmt, 
+  entityStats, 
+  massBalance, 
+  selfAgg, 
+  routeIntel, 
+  hsAgg, 
+  brandAvgs, 
+  amountBuckets, 
+  tobaccoSignals, 
+  fraudProbability: fraudProb 
+});
   
   return (
     <div className="min-h-screen bg-[#f8fafc] text-slate-900 pb-20 font-sans">
@@ -441,47 +468,52 @@ AI Intelligence Summary
 
 )}
 
-          {/* TAB: ERS SCORING */}
 {/* TAB: ERS SCORING */}
 {activeTab === "ers" && (
-
-  <div className="bg-white p-8 rounded-2xl shadow">
-
-    <h2 className="text-2xl font-black mb-6">
-      Entity Risk Scoring (ERS)
-    </h2>
-
-    <div className="mb-6 text-slate-700">
-      ERS Score Calculation
-
-      <br/>• 30% Fraud Signals  
-      <br/>• 25% Network Centrality  
-      <br/>• 20% Price Manipulation  
-      <br/>• 15% Shell Probability  
-      <br/>• 10% Corridor Risk
-    </div>
-
-    {Object.entries(ersScores || {}).map(([entity, score]) => (
-
-      <div key={entity} className="border-b py-3 flex justify-between">
-
-        <div>
-          <div className="font-bold">{entity}</div>
-          <div className="text-sm text-slate-600">
-            Evidence: Shell Score: {shellScores?.[entity] || 0}
+  <div className="space-y-6">
+    {/* 1. The Entity Cards Loop */}
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      {entityERS.map((entity) => (
+        <div key={entity.name} className="bg-white p-6 rounded-[2.5rem] border-4 border-slate-900 shadow-xl">
+          <h3 className="text-xl font-black uppercase truncate">{entity.name}</h3>
+          
+          {/* PLACE THE FORENSIC EVIDENCE BLOCK HERE */}
+          <div className="mt-4 p-4 bg-slate-50 rounded-2xl border border-slate-200">
+            <div className="text-[10px] font-black uppercase text-slate-400 mb-2 tracking-widest">
+              Forensic Evidence
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <div className="text-lg font-black text-slate-900">{entity.priceAnomaly}</div>
+                <div className="text-[9px] font-bold text-slate-500 uppercase">Price Deviations</div>
+              </div>
+              <div className="border-l pl-4">
+                <div className="text-lg font-black text-slate-900">{entity.transactions - entity.priceAnomaly}</div>
+                <div className="text-[9px] font-bold text-slate-500 uppercase">Clean Invoices</div>
+              </div>
+            </div>
           </div>
         </div>
+      ))}
+    </div>
 
-        <div className="font-black text-lg">
-          {score}
-        </div>
-
-      </div>
-
-    ))}
-
+    {/* 2. THE AI SUMMARY (Place this OUTSIDE the map, at the very bottom) */}
+    <AISummary 
+      title="AI Forensic Summary"
+      icon={Brain}
+      content={
+        <>
+          Analysis detected that several transactions lacked a declared <span className="font-bold underline text-blue-800">Unit Price($)</span>. 
+          The system auto-calculated values based on <span className="italic">Total Amount / Weight</span> to fill these gaps. 
+          <br/><br/>
+          <span className="bg-white px-2 py-1 rounded border border-blue-100 shadow-sm">
+            <span className="text-red-600 font-black">ALERT:</span> {entityERS.filter(e => e.priceAnomaly > 0).length} entities 
+            show prices deviating significantly from the brand median.
+          </span>
+        </>
+      }
+    />
   </div>
-
 )}
           {/* TAB: MASS BALANCE */}
           {activeTab === "mass" && (
