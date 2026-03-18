@@ -1,17 +1,75 @@
-export function fraudScore(entity){
+export function calculateFraudProbability(data, fraudStats, shellScores){
 
-let score=0;
+return data.map(r=>{
 
-score += entity.selfTrades*4;
+let score = 0;
+let reasons = [];
 
-score += entity.hsMismatch*2;
+/* -----------------------------
+VAT / Fraud Signals
+-----------------------------*/
+if(fraudStats?.vat?.includes(r.Exporter)){
+score += 25;
+reasons.push("VAT carousel involvement");
+}
 
-score += entity.priceAnomaly*3;
+if(fraudStats?.phantom?.includes(r.Exporter)){
+score += 20;
+reasons.push("Phantom exporter pattern");
+}
 
-score += entity.circularLoops*5;
+if(fraudStats?.price?.includes(r.Exporter)){
+score += 15;
+reasons.push("Price manipulation detected");
+}
 
-score += entity.routeRisk*2;
+/* -----------------------------
+Shell Risk
+-----------------------------*/
+const shell = shellScores[r.Exporter] || 0;
 
-return score;
+score += shell * 0.3;
+
+if(shell > 70){
+reasons.push("High shell company probability");
+}
+
+/* -----------------------------
+Price Anomaly
+-----------------------------*/
+const unitPrice = parseFloat(r["Unit Price($)"]||0);
+
+if(unitPrice > 25){
+score += 10;
+reasons.push("High unit price anomaly");
+}
+
+/* -----------------------------
+Weight vs Value Density
+-----------------------------*/
+const density =
+parseFloat(r["Amount($)"]||0) /
+(parseFloat(r["Weight(Kg)"]||1));
+
+if(density > 80){
+score += 15;
+reasons.push("High value per kg (smuggling indicator)");
+}
+
+/* -----------------------------
+Clamp Score
+-----------------------------*/
+score = Math.min(100, Math.round(score));
+
+return {
+...r,
+fraudScore: score,
+fraudLevel:
+score > 70 ? "HIGH" :
+score > 40 ? "MEDIUM" : "LOW",
+reasons
+};
+
+});
 
 }
