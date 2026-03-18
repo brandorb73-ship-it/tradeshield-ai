@@ -121,19 +121,15 @@ const anomalyRate = data.length
 RETURN
 -----------------------------*/
 return {
-  clusters: Object.values(clusters)
-    .sort((a,b)=>b.totalValue-a.totalValue)
-    .slice(0,20),
-
+  clusters: Object.entries(clusters).map(([k,v])=>({
+    key:k,
+    shipments:v.length,
+    totalValue: v.reduce((s,r)=>s+parseFloat(r["Amount($)"]||0),0)
+  })),
   anomalies,
-
   taxLoss: Math.round(taxLoss),
-
-  medianPrice: Number(median.toFixed(2)),
-
-  anomalyRate,
-
-  totalTrade
+  avgPrice: avg,
+  anomalyRate: ((anomalies.length/data.length)*100).toFixed(2)
 };
 
 }
