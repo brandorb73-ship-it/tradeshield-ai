@@ -692,73 +692,59 @@ Possible fraud:
   </div>
 
   {/* GRID */}
-  <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
 
     {/* VAT */}
     <div className="bg-white p-6 rounded-2xl border shadow">
       <h3 className="font-bold text-xl mb-4">VAT Carousel Entities</h3>
 
-      {fraudStats.vat.map(e=>(
-        <div key={e} className="mb-4">
-          <div className="font-bold text-red-700">{e}</div>
-          <div className="text-sm text-slate-600">
-            Evidence: Circular trade loop detected  
-            Reason: Exporter also receives same product
-          </div>
-        </div>
-      ))}
-
+     {fraudStats.vat.map((e, i) => {
+  return (
+    <div key={i} className="mb-4">
+      <div className="font-bold text-red-700">{e}</div>
+      <div className="text-sm text-slate-600">
+        Evidence: Circular trade loop detected  
+        Reason: Exporter also receives same product
+      </div>
     </div>
+  );
+})}
 
-    {/* PHANTOM */}
-    <div className="bg-white p-6 rounded-2xl border shadow">
-      <h3 className="font-bold text-xl mb-4">Phantom Exporters</h3>
-
-      {fraudStats.phantom.map(e=>(
-        <div key={e} className="mb-4">
-          <div className="font-bold text-purple-700">{e}</div>
-          <div className="text-sm text-slate-600">
-            Evidence: High value, low shipment count  
-            Reason: Trade laundering pattern
-          </div>
-        </div>
-      ))}
-
+ {fraudStats.phantom.map((e, i) => {
+  return (
+    <div key={i} className="mb-4">
+      <div className="font-bold text-purple-700">{e}</div>
+      <div className="text-sm text-slate-600">
+        Evidence: High value, low shipment count  
+        Reason: Trade laundering pattern
+      </div>
     </div>
+  );
+})}
 
-    {/* U-TURN */}
-    <div className="bg-white p-6 rounded-2xl border shadow">
-      <h3 className="font-bold text-xl mb-4">U-Turn Trade</h3>
-
-      {fraudStats.uturn?.map(e=>(
-        <div key={e} className="mb-4">
-          <div className="font-bold text-yellow-700">{e}</div>
-          <div className="text-sm text-slate-600">
-            Evidence: Goods return to origin  
-            Reason: Circular laundering route
-          </div>
-        </div>
-      ))}
-
+ {fraudStats.uturn?.map((e, i) => {
+  return (
+    <div key={i} className="mb-4">
+      <div className="font-bold text-yellow-700">{e}</div>
+      <div className="text-sm text-slate-600">
+        Evidence: Goods return to origin  
+        Reason: Circular laundering route
+      </div>
     </div>
-
+  );
+})}
     {/* PRICE */}
-    <div className="bg-white p-6 rounded-2xl border shadow">
-      <h3 className="font-bold text-xl mb-4">Price Manipulation</h3>
-
-      {fraudStats.price.map(e=>(
-        <div key={e} className="mb-4">
-          <div className="font-bold text-blue-700">{e}</div>
-          <div className="text-sm text-slate-600">
-            Evidence: Price deviation  
-            Reason: Customs value manipulation
-          </div>
-        </div>
-      ))}
-
+ {fraudStats.price.map((e, i) => {
+  return (
+    <div key={i} className="mb-4">
+      <div className="font-bold text-blue-700">{e}</div>
+      <div className="text-sm text-slate-600">
+        Evidence: Price deviation  
+        Reason: Customs value manipulation
+      </div>
     </div>
-
-  </div>
+  );
+})}
 
 </div>  {/* ✅ END WRAPPER */}
 
