@@ -15,6 +15,8 @@ import runFraudEngine from "../analytics/riskEngine";
 import detectVATCarousel from "../analytics/vatCarousel";
 import detectPhantomExporter from "../analytics/phantomExporter";
 import detectPriceFraud from "../analytics/priceFraud";
+import {calculateFraudProbability} from "../analytics/fraudProbability";
+import {financialAnalysis} from "../analytics/financialForensics";
 import generateNarrative from "../analytics/aiNarrative";
 
 export default function Dashboard() {
