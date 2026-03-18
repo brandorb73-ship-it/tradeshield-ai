@@ -116,20 +116,23 @@ const totalTrade = data.reduce(
 const anomalyRate = data.length
 ? ((anomalies.length/data.length)*100).toFixed(1)
 : 0;
+const avg = prices.length 
+  ? prices.reduce((a, b) => a + b, 0) / prices.length 
+  : 0;
 
+return {
+  // ...
+  avgPrice: avg, 
+  // ...
+};
 /* -----------------------------
-RETURN
+/* -----------------------------
+RETURN (FIXED)
 -----------------------------*/
 return {
-  clusters: Object.entries(clusters).map(([k,v])=>({
-    key:k,
-    shipments:v.length,
-    totalValue: v.reduce((s,r)=>s+parseFloat(r["Amount($)"]||0),0)
-  })),
+  clusters: Object.values(clusters), // This gives you the array of objects you built
   anomalies,
   taxLoss: Math.round(taxLoss),
-  avgPrice: avg,
-  anomalyRate: ((anomalies.length/data.length)*100).toFixed(2)
+  avgPrice: median, // Use the median we found earlier
+  anomalyRate: data.length ? ((anomalies.length / data.length) * 100).toFixed(2) : "0.00"
 };
-
-}
