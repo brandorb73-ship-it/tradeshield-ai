@@ -16,7 +16,7 @@ import detectVATCarousel from "../analytics/vatCarousel";
 import detectPhantomExporter from "../analytics/phantomExporter";
 import detectPriceFraud from "../analytics/priceFraud";
 import {calculateFraudProbability} from "../analytics/fraudProbability";
-import { financialAnalysis } from "../analytics/financialAnalysis";
+import { financialAnalysis } from "../analytics/financialForensics";
 import detectUTurnTrade from "../analytics/uTurnTrade";
 import FraudIntelligenceCard from "../components/analytics/FraudIntelligenceCard";
 import generateNarrative from "../analytics/aiNarrative";
