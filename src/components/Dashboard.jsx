@@ -18,7 +18,7 @@ import detectPriceFraud from "../analytics/priceFraud";
 import {calculateFraudProbability} from "../analytics/fraudProbability";
 import { financialAnalysis } from "../analytics/financialForensics";
 import detectUTurnTrade from "../analytics/uTurnTrade";
-import FraudIntelligenceCard from "../components/analytics/FraudIntelligenceCard";
+import FraudIntelligenceCard from "./FraudIntelligenceCard";
 import generateNarrative from "../analytics/aiNarrative";
 
 export default function Dashboard() {
