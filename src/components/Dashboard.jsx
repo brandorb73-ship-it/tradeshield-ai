@@ -16,7 +16,7 @@ import detectVATCarousel from "../analytics/vatCarousel";
 import detectPhantomExporter from "../analytics/phantomExporter";
 import detectPriceFraud from "../analytics/priceFraud";
 import {calculateFraudProbability} from "../analytics/fraudProbability";
-import {financialAnalysis} from "../analytics/financialForensics";
+import { financialAnalysis } from "../analytics/financialAnalysis";
 import generateNarrative from "../analytics/aiNarrative";
 
 export default function Dashboard() {
@@ -32,7 +32,9 @@ const [fraudStats, setFraudStats] = useState({
   price: [],
   mlScores: {}
 });
-
+const fin = useMemo(() => {
+  return financialAnalysis(data);
+}, [data]);
  const narrative = useMemo(() => {
   return generateNarrative(stats, fraudStats);
 }, [stats, fraudStats]);
@@ -76,8 +78,8 @@ const [fraudStats, setFraudStats] = useState({
     const tobaccoSignals=detectTobaccoFraud(rawData);
     let totalWeight = 0;
     let totalAmt = 0;
+    const fraudProb = calculateFraudProbability(rawData);
 // NEW FRAUD DETECTIONS
-
 const vatEntities = detectVATCarousel(rawData);
 const phantomEntities = detectPhantomExporter(rawData);
 const priceEntities = detectPriceFraud(rawData);
@@ -248,6 +250,8 @@ CLEAR
 
 <TabBtn active={activeTab === 'map'} onClick={() => setActiveTab('map')} icon={<Globe size={18}/>} label="Map Intel" />
 
+<TabBtn active={activeTab === 'heat'} onClick={() => setActiveTab('heat')} icon={<Globe size={18}/>} label="Fraud Heatmap" />
+
 <TabBtn active={activeTab === 'hs'} onClick={() => setActiveTab('hs')} icon={<Layers size={18}/>} label="HS Intel" />
 
 <TabBtn active={activeTab === 'fraud'} onClick={() => setActiveTab('fraud')} icon={<AlertTriangle size={18}/>} label="Fraud Intel" />
@@ -262,6 +266,24 @@ CLEAR
           {activeTab === "audit" && (
             <div className="animate-in fade-in space-y-6">
                 <div className="bg-white rounded-[2rem] shadow-2xl border-4 border-slate-900 overflow-hidden">
+                  <select
+onChange={(e)=>{
+  const val = e.target.value;
+  if(val==="all") return setData(data);
+
+  setData(data.filter(d=>{
+    if(val==="self") return d._isSelf;
+    if(val==="hs") return d._isHS;
+    if(val==="price") return d._isPrice;
+  }));
+}}
+className="mb-4 p-2 border rounded"
+>
+<option value="all">All</option>
+<option value="self">Self Trade</option>
+<option value="hs">HS Mismatch</option>
+<option value="price">Price Fraud</option>
+</select>
                     <table className="w-full text-left">
                         <thead className="bg-slate-900 text-white text-xs font-black uppercase">
                             <tr>
@@ -333,7 +355,7 @@ AI Intelligence Summary
 )}
 
           {/* TAB: ERS SCORING */}
-{activeTab==="ers" && (
+setActiveTab('ers')
 
 <div className="bg-white p-8 rounded-2xl shadow">
 
@@ -415,7 +437,40 @@ Shell Score: {shellScores[entity]||0}
           )}
 
           {/* TAB: SELF TRADE */}
-          {activeTab==="self" && (
+{activeTab==="self" && (() => {
+
+let importsWeight=0, importsQty=0, importsAmt=0;
+let exportsWeight=0, exportsQty=0, exportsAmt=0;
+
+const importCountries = new Set();
+const exportCountries = new Set();
+const brands = new Set();
+
+data.forEach(r=>{
+  if(r.Exporter === r.Importer){
+
+    const w = parseFloat(r["Weight(Kg)"]||0);
+    const q = parseFloat(r["Quantity"]||0);
+    const a = parseFloat(r["Amount($)"]||0);
+
+    importsWeight += w;
+    importsQty += q;
+    importsAmt += a;
+
+    exportsWeight += w;
+    exportsQty += q;
+    exportsAmt += a;
+
+    importCountries.add(r["Origin Country"]);
+    exportCountries.add(r["Destination Country"]);
+    brands.add(r.Brand);
+  }
+});
+
+const mismatch = Math.abs(importsWeight - exportsWeight);
+const fraudScore = mismatch > 0 ? "HIGH RISK" : "CIRCULAR TRADE";
+
+return (
 
 <div className="bg-white p-6 rounded-xl shadow">
 
@@ -427,104 +482,125 @@ Self Trade Intelligence
 
 <div>
 <h3 className="font-bold">Imports</h3>
-<div>Total Weight: {importsWeight}</div>
-<div>Total Quantity: {importsQty}</div>
-<div>Total Amount: ${importsAmt}</div>
-<div>Countries: {importCountries.join(", ")}</div>
+<div>Weight: {importsWeight.toFixed(2)}</div>
+<div>Quantity: {importsQty}</div>
+<div>Amount: ${importsAmt.toLocaleString()}</div>
+<div>Countries: {[...importCountries].join(", ")}</div>
 </div>
 
 <div>
 <h3 className="font-bold">Exports</h3>
-<div>Total Weight: {exportsWeight}</div>
-<div>Total Quantity: {exportsQty}</div>
-<div>Total Amount: ${exportsAmt}</div>
-<div>Countries: {exportCountries.join(", ")}</div>
+<div>Weight: {exportsWeight.toFixed(2)}</div>
+<div>Quantity: {exportsQty}</div>
+<div>Amount: ${exportsAmt.toLocaleString()}</div>
+<div>Countries: {[...exportCountries].join(", ")}</div>
 </div>
 
 </div>
 
 <div className="mt-6">
 
-<h3 className="font-bold">Analysis</h3>
+<h3 className="font-bold">Brands Involved</h3>
+<div className="text-sm">{[...brands].join(", ")}</div>
+
+<h3 className="font-bold mt-4">Conclusion</h3>
 
 <div className="text-sm text-slate-700">
 
-• Compare import vs export volume mismatch  
-• Re-export patterns indicate possible diversion  
-• Same brand traded both ways suggests circular trade  
+Mismatch: {mismatch.toFixed(2)} KG  
+Flag: <b>{fraudScore}</b>  
 
-Conclusion:
-
-Potential self-trade laundering or re-routing activity detected.
-
-</div>
+Possible fraud:
+• Round-tripping  
+• VAT carousel layering  
+• Trade-based money laundering  
 
 </div>
 
 </div>
 
-)}
+</div>
+
+);
+
+})()}
 
           {/* TAB: FINANCIAL FORENSICS */}
-          {activeTab==="finance" && (
+{activeTab === "finance" && (
 
-<div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+<div className="space-y-6">
 
-<div className="bg-white p-6 rounded-2xl shadow">
+  <h2 className="text-2xl font-black">
+    Financial Forensics Intelligence
+  </h2>
 
-<h3 className="font-bold text-xl mb-4">
-Value Concentration
-</h3>
+  {/* ---------------- SUMMARY ---------------- */}
+  <div className="grid grid-cols-3 gap-4">
 
-<div>
+    <div className="bg-slate-100 p-4 rounded-xl">
+      <div className="text-sm text-slate-500">Median Price</div>
+      <div className="text-xl font-bold">${fin.medianPrice}</div>
+    </div>
 
-Top 5 entities control majority of trade value.
+    <div className="bg-slate-100 p-4 rounded-xl">
+      <div className="text-sm text-slate-500">Anomaly Rate</div>
+      <div className="text-xl font-bold">{fin.anomalyRate}%</div>
+    </div>
 
-</div>
+    <div className="bg-red-100 p-4 rounded-xl">
+      <div className="text-sm text-red-600">Estimated Tax Loss</div>
+      <div className="text-xl font-bold">
+        ${fin.taxLoss.toLocaleString()}
+      </div>
+    </div>
 
-</div>
+  </div>
 
-<div className="bg-white p-6 rounded-2xl shadow">
+  {/* ---------------- ANOMALIES ---------------- */}
+  <div>
 
-<h3 className="font-bold text-xl mb-4">
-Price Variance
-</h3>
+    <h3 className="text-lg font-bold mb-3 text-red-600">
+      Value Manipulation Signals
+    </h3>
 
-<div>
+    {fin.anomalies.slice(0,20).map((a,i)=>(
+      <div key={i} className="border p-3 mb-2 rounded bg-red-50">
 
-High price spread indicates customs value manipulation.
+        <div className="font-bold">{a.entity}</div>
 
-</div>
+        <div className="text-sm">
+          Price: ${a.price} vs Median ${a.median}<br/>
+          Deviation: {a.deviation}%<br/>
+          Weight: {a.weight} KG<br/>
+          Value: ${a.amount.toLocaleString()}<br/>
+          <span className="text-red-600 font-semibold">
+            {a.reason}
+          </span>
+        </div>
 
-</div>
+      </div>
+    ))}
 
-<div className="bg-white p-6 rounded-2xl shadow">
+  </div>
 
-<h3 className="font-bold text-xl mb-4">
-Revenue Density
-</h3>
+  {/* ---------------- CLUSTERS ---------------- */}
+  <div>
 
-<div>
+    <h3 className="text-lg font-bold mb-3 text-blue-600">
+      Invoice Pattern Clusters
+    </h3>
 
-Value per KG analysis highlights suspicious shipments.
+    {fin.clusters.map((c,i)=>(
+      <div key={i} className="text-sm border-b py-2">
 
-</div>
+        <b>{c.exporter}</b> → Price Band ${c.priceBand}<br/>
+        Shipments: {c.shipments} | 
+        Value: ${c.totalValue.toLocaleString()}
 
-</div>
+      </div>
+    ))}
 
-<div className="bg-white p-6 rounded-2xl shadow">
-
-<h3 className="font-bold text-xl mb-4">
-High-Risk Transactions
-</h3>
-
-<div>
-
-Transactions involving flagged entities highlighted.
-
-</div>
-
-</div>
+  </div>
 
 </div>
 
