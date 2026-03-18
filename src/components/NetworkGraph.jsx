@@ -108,9 +108,10 @@ const link=container.append("g")
 .data(links)
 .enter()
 .append("line")
-.attr("stroke","#9ca3af")
+.attr("stroke","#374151")
+.attr("stroke-width",1.5)
 .attr("stroke-opacity",0.6)
-.attr("stroke-width",d=>Math.sqrt(d.value)/50);
+.attr("stroke-width",d=>Math.sqrt(d.value)/20)
 
 /* ----------------------------
 NODE SIZE
@@ -208,6 +209,20 @@ tooltip.style("opacity",0);
 
 });
 
+  <div className="mt-4 text-sm text-slate-600">
+
+Graph Interpretation
+
+• Node size = total trade value  
+• Node color = risk score  
+• Link thickness = trade volume  
+• Clusters = trade hubs  
+
+Investigators should focus on:
+
+Large red nodes connected to multiple clusters.
+
+</div>
 /* ----------------------------
 TICK UPDATE
 -----------------------------*/
