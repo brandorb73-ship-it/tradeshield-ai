@@ -15,6 +15,7 @@ import runFraudEngine from "../analytics/riskEngine";
 import detectVATCarousel from "../analytics/vatCarousel";
 import detectPhantomExporter from "../analytics/phantomExporter";
 import detectPriceFraud from "../analytics/priceFraud";
+import generateNarrative from "../analytics/aiNarrative";
 
 export default function Dashboard() {
   const [urlInput, setUrlInput] = useState("");
@@ -23,6 +24,7 @@ export default function Dashboard() {
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState("audit");
   const [stats, setStats] = useState({});
+  const narrative = generateNarrative(stats, fraudStats);
 const [fraudStats, setFraudStats] = useState({
   vat: [],
   phantom: [],
@@ -306,43 +308,77 @@ CLEAR
           )}
 
           {/* TAB: FINAL ANALYSIS (AI SUMMARY) */}
-          {activeTab === "final" && (
-              <div className="bg-white p-12 rounded-[3rem] shadow-2xl border-4 border-blue-600 animate-in zoom-in">
-                  <div className="flex items-center gap-4 mb-8">
-                      <div className="bg-blue-600 p-4 rounded-3xl text-white shadow-xl"><Brain size={40}/></div>
-                      <h2 className="text-4xl font-black uppercase tracking-tighter">Forensic Conclusion Summary</h2>
-                  </div>
-                  <div className="bg-slate-50 p-10 rounded-[2rem] border-2 border-slate-200 mb-10 text-2xl font-bold leading-relaxed text-slate-800 italic">
-                      "{stats.summary}"
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                      <SummaryCard label="Capital Exposure" value={`$${stats.totalAmt?.toLocaleString()}`} color="red" />
-                      <SummaryCard label="High Risk Nodes" value={Object.keys(stats.entityStats).length} color="blue" />
-                      <SummaryCard label="Tax Anomaly Index" value="CRITICAL" color="purple" />
-                  </div>
-              </div>
-          )}
+          {activeTab==="final" && (
+
+<div className="bg-white p-8 rounded-2xl shadow">
+
+<h2 className="text-2xl font-black mb-4">
+AI Intelligence Summary
+</h2>
+
+<pre className="whitespace-pre-wrap text-slate-700">
+
+{narrative}
+
+</pre>
+
+</div>
+
+)}
 
           {/* TAB: ERS SCORING */}
-          {activeTab === "network" && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 animate-in fade-in">
-                {Object.entries(stats.entityStats).sort((a,b)=>b[1].total - a[1].total).map(([name, s]) => {
-                    const score = ((s.self*3 + s.hs*2 + s.price*5) / (s.total || 1) * 10).toFixed(1);
-                    return (
-                        <div key={name} className="p-10 bg-white border-4 border-slate-900 rounded-[3rem] flex justify-between items-center shadow-xl">
-                            <div>
-                                <h3 className="text-2xl font-black uppercase text-slate-900 leading-tight mb-2">{name}</h3>
-                                <p className="text-sm font-bold text-slate-700 uppercase">Transactions: {s.total}</p>
-                            </div>
-                            <div className="text-right">
-                                <div className="text-sm font-black text-slate-700 uppercase">ERS Risk Score</div>
-                                <div className={`text-6xl font-black ${score > 50 ? 'text-red-600' : 'text-emerald-600'}`}>{score}</div>
-                            </div>
-                        </div>
-                    )
-                })}
-            </div>
-          )}
+{activeTab==="ers" && (
+
+<div className="bg-white p-8 rounded-2xl shadow">
+
+<h2 className="text-2xl font-black mb-6">
+Entity Risk Scoring (ERS)
+</h2>
+
+<div className="mb-6 text-slate-700">
+
+ERS Score Calculation
+
+• 30% Fraud Signals  
+• 25% Network Centrality  
+• 20% Price Manipulation  
+• 15% Shell Probability  
+• 10% Corridor Risk
+
+</div>
+
+{Object.entries(ersScores).map(([entity,score])=>(
+
+<div key={entity}
+className="border-b py-3 flex justify-between">
+
+<div>
+
+<div className="font-bold">{entity}</div>
+
+<div className="text-sm text-slate-600">
+
+Evidence:
+
+Shell Score: {shellScores[entity]||0}
+
+</div>
+
+</div>
+
+<div className="font-black text-lg">
+
+{score}
+
+</div>
+
+</div>
+
+))}
+
+</div>
+
+)}
 
           {/* TAB: MASS BALANCE */}
           {activeTab === "mass" && (
@@ -465,38 +501,92 @@ CLEAR
               </div>
           )}
 
-{activeTab === "fraud" && (
+{activeTab==="fraud" && (
 
 <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
 
-<div className="bg-white p-8 rounded-3xl border-4 border-red-600">
+<div className="bg-white p-6 rounded-2xl border shadow">
 
-<h3 className="text-2xl font-black mb-4">VAT Carousel Risk</h3>
+<h3 className="font-bold text-xl mb-4">
+VAT Carousel Entities
+</h3>
 
-{fraudStats.vat.map(e => (
-<div key={e} className="text-red-700 font-bold">{e}</div>
+{fraudStats.vat.map(e=>(
+
+<div key={e} className="mb-4">
+
+<div className="font-bold text-red-700">{e}</div>
+
+<div className="text-sm text-slate-600">
+
+Evidence:
+Appears in circular trade loop detected by graph analysis.
+
+Reason:
+Exporter also receives same product from downstream importer.
+
+</div>
+
+</div>
+
 ))}
 
 </div>
 
 
-<div className="bg-white p-8 rounded-3xl border-4 border-purple-600">
+<div className="bg-white p-6 rounded-2xl border shadow">
 
-<h3 className="text-2xl font-black mb-4">Phantom Exporters</h3>
+<h3 className="font-bold text-xl mb-4">
+Phantom Exporters
+</h3>
 
-{fraudStats.phantom.map(e => (
-<div key={e} className="text-purple-700 font-bold">{e}</div>
+{fraudStats.phantom.map(e=>(
+
+<div key={e} className="mb-4">
+
+<div className="font-bold text-purple-700">{e}</div>
+
+<div className="text-sm text-slate-600">
+
+Evidence:
+High trade value with extremely low shipment count.
+
+Reason:
+Typical phantom exporter pattern used in trade laundering.
+
+</div>
+
+</div>
+
 ))}
 
 </div>
 
 
-<div className="bg-white p-8 rounded-3xl border-4 border-blue-600">
+<div className="bg-white p-6 rounded-2xl border shadow">
 
-<h3 className="text-2xl font-black mb-4">Price Manipulation</h3>
+<h3 className="font-bold text-xl mb-4">
+Price Manipulation
+</h3>
 
-{fraudStats.price.map(e => (
-<div key={e} className="text-blue-700 font-bold">{e}</div>
+{fraudStats.price.map(e=>(
+
+<div key={e} className="mb-4">
+
+<div className="font-bold text-blue-700">{e}</div>
+
+<div className="text-sm text-slate-600">
+
+Evidence:
+Unit price deviates significantly from dataset median.
+
+Reason:
+Possible customs value manipulation.
+
+</div>
+
+</div>
+
 ))}
 
 </div>
@@ -504,6 +594,7 @@ CLEAR
 </div>
 
 )}
+
 {/* TAB: NETWORK GRAPH */}
 {activeTab === "networkGraph" && (
   <div className="bg-white p-10 rounded-3xl border-4 border-slate-900 shadow-xl">
