@@ -910,16 +910,18 @@ Possible fraud:
           )}
 
 {activeTab === "fraud" && (
-  <FraudIntelligenceCard 
-    stats={stats}
-    fraudStats={fraudStats}
-  />
-<AISummary
+  <div>
+    <FraudIntelligenceCard 
+      stats={stats}
+      fraudStats={fraudStats}
+    />
+
+    <AISummary
       title="Fraud Engine Summary"
       icon={AlertTriangle}
       content={generateNarrative(stats, fraudStats)}
     />
-  </>
+  </div>
 )}
 
 {/* TAB: NETWORK GRAPH */}
