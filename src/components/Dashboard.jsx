@@ -25,7 +25,7 @@ import detectShellCompanies from "../analytics/shellDetector";
 import { calculateShellScore } from "../analytics/shellProbability";
 import { detectTradeCorridors } from "../analytics/corridorHeatmap";
 import mlScore from "../analytics/mlAnomaly"; 
-import { detectInvoiceMismatch } from "../analytics/invoiceCheck";
+import detectInvoiceMismatch from "../analytics/invoiceCheck"; 
 import generateNarrative from "../analytics/aiNarrative";
 
 export default function Dashboard() {
