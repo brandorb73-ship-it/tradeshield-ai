@@ -20,6 +20,13 @@ import { financialAnalysis } from "../analytics/financialForensics";
 import detectUTurnTrade from "../analytics/uTurnTrade";
 import FraudIntelligenceCard from "./FraudIntelligenceCard";
 import runIntelEngine from "../analytics/intelEngine";
+import fraudRings from "../analytics/fraudRings";
+import detectCycles from "../analytics/cycleDetection";
+import detectShells from "../analytics/shellDetector";
+import shellProbability from "../analytics/shellProbability";
+import corridorHeatmap from "../analytics/corridorHeatmap";
+import mlAnomaly from "../analytics/mlAnomaly";
+import invoiceCheck from "../analytics/invoiceCheck";
 import generateNarrative from "../analytics/aiNarrative";
 
 export default function Dashboard() {
@@ -34,7 +41,14 @@ const [activeFilter, setActiveFilter] = useState("all");
 const entityERS = useMemo(() => {
   if (!stats.entityStats) return [];
   return Object.entries(stats.entityStats).map(([name, s]) => {
-    const raw = (s.self * 30) + (s.hs * 20) + (s.price * 40);
+    const raw =
+  (s.self * 25) +
+  (s.hs * 15) +
+  (s.price * 25) +
+  (s.mlRisk * 20) +
+  (s.shellRisk * 30) +
+  (s.ringScore * 40) +
+  (s.cycleScore * 35);
     const final = Math.min(100, (raw / s.total) + (s.total > 10 ? 10 : 0));
     return { name, ...s, finalScore: final.toFixed(1) };
   }).sort((a, b) => b.finalScore - a.finalScore);
@@ -109,6 +123,20 @@ try {
 } catch(e) {
   console.error(e);
 }
+let rings = [];
+let cycles = [];
+let shells = [];
+let shellScores = {};
+let corridors = [];
+let anomalies = [];
+
+try { rings = fraudRings(cleanedData); } catch(e){ console.error("rings", e); }
+try { cycles = detectCycles(cleanedData); } catch(e){ console.error("cycles", e); }
+try { shells = detectShells(cleanedData); } catch(e){ console.error("shells", e); }
+try { shellScores = shellProbability(cleanedData); } catch(e){ console.error("shellProb", e); }
+try { corridors = corridorHeatmap(cleanedData); } catch(e){ console.error("corridors", e); }
+try { anomalies = mlAnomaly(cleanedData); } catch(e){ console.error("ml", e); }
+  
   // 1️⃣ Clean data and normalize critical fields
   const cleanedData = rawData.map(row => {
     const cleanRow = {};
@@ -177,16 +205,21 @@ get _effectivePrice() {
 // Ensure entities exist with ALL fields initialized to 0
 [exp, imp].forEach(e => {
   if (!entityStats[e]) {
-    entityStats[e] = { 
-      self: 0, 
-      hs: 0, 
-      price: 0, 
-      total: 0, 
-      uTurns: 0,
-      // Add these two for the ERS Tab Forensic Evidence
-      priceAnomaly: 0, 
-      transactions: 0 
-    };
+entityStats[e] = { 
+  self: 0, 
+  hs: 0, 
+  price: 0, 
+  total: 0, 
+  uTurns: 0,
+  priceAnomaly: 0, 
+  transactions: 0,
+
+  // NEW INTEL LAYER
+  mlRisk: 0,
+  shellRisk: 0,
+  ringScore: 0,
+  cycleScore: 0
+};
   }
 });
 
@@ -273,6 +306,31 @@ cleanedData.forEach(r => {
   try { mlScores = runFraudEngine(cleanedData); } catch(e){ console.error(e); }
   try { fraudProb = calculateFraudProbability(cleanedData); } catch(e){ console.error(e); }
 
+  // 6.5️⃣ APPLY INTELLIGENCE SCORES TO ENTITIES
+Object.keys(entityStats).forEach(e => {
+
+  // ML Risk
+  if (mlScores && mlScores[e]) {
+    entityStats[e].mlRisk = mlScores[e];
+  }
+
+  // Shell Company Risk
+  if (shellScores && shellScores[e]) {
+    entityStats[e].shellRisk = shellScores[e];
+  }
+
+  // Fraud Rings
+  if (Array.isArray(rings) && rings.find(r => r?.includes?.(e))) {
+    entityStats[e].ringScore += 1;
+  }
+
+  // Cycle Detection (VAT loops / U-turns)
+  if (Array.isArray(cycles) && cycles.find(c => c?.includes?.(e))) {
+    entityStats[e].cycleScore += 1;
+  }
+
+});
+
 // 7️⃣ Update state safely
 // Since we already attached _isSelf, _isHS, and _isPrice in the loops above,
 // we just need to pass the cleanedData directly to the state.
@@ -302,7 +360,11 @@ setStats({
   brandAvgs, 
   amountBuckets, 
   tobaccoSignals, 
-  fraudProbability: fraudProb 
+  fraudProbability: fraudProb,
+  rings,
+  cycles,
+  shells,
+  corridors
 });
   };
   return (
