@@ -37,8 +37,6 @@ export default function Dashboard() {
 const [activeFilter, setActiveFilter] = useState("all");
   const [stats, setStats] = useState({});
   const [intel, setIntel] = useState({});
-  const shellScores = detectShellCompanies(data);
-  const shellProbability = calculateShellScore(data);
   const [selectedEntity, setSelectedEntity] = useState(null);
 const entityERS = useMemo(() => {
   if (!stats.entityStats) return [];
