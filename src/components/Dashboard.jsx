@@ -951,7 +951,8 @@ Possible fraud:
         </main>
       )}
     </div>
-  
+  );   
+} 
 // --- SHARED COMPONENTS ---
 
 function TabBtn({ active, onClick, icon, label }) {
