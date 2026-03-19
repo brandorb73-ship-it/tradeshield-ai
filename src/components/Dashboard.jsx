@@ -21,7 +21,8 @@ import detectUTurnTrade from "../analytics/uTurnTrade";
 import FraudIntelligenceCard from "./FraudIntelligenceCard";
 import runIntelEngine from "../analytics/intelEngine";
 import { detectFraudRings } from "../analytics/fraudRings";
-import { detectShellCompanies } from "../analytics/shellDetector";
+import detectShellCompanies from "../analytics/shellDetector";  
+import { calculateShellScore } from "../analytics/shellProbability";
 import { detectTradeCorridors } from "../analytics/corridorHeatmap";
 import { detectmlScore } from "../analytics/mlAnomaly";
 import { detectInvoiceMismatch } from "../analytics/invoiceCheck";
@@ -36,6 +37,8 @@ export default function Dashboard() {
 const [activeFilter, setActiveFilter] = useState("all");
   const [stats, setStats] = useState({});
   const [intel, setIntel] = useState({});
+  const shellScores = detectShellCompanies(data);
+  const shellProbability = calculateShellScore(data);
   const [selectedEntity, setSelectedEntity] = useState(null);
 const entityERS = useMemo(() => {
   if (!stats.entityStats) return [];
