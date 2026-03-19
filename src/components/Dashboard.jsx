@@ -20,7 +20,7 @@ import { financialAnalysis } from "../analytics/financialForensics";
 import detectUTurnTrade from "../analytics/uTurnTrade";
 import FraudIntelligenceCard from "./FraudIntelligenceCard";
 import runIntelEngine from "../analytics/intelEngine";
-import fraudRings from "../analytics/fraudRings";
+import { detectFraudRings } from "../analytics/fraudRings";
 import detectCycles from "../analytics/cycleDetection";
 import detectShells from "../analytics/shellDetector";
 import shellProbability from "../analytics/shellProbability";
