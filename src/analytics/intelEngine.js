@@ -4,7 +4,7 @@ import { calculateShellScore } from "../analytics/shellProbability";
 import detectShellCompanies from "../analytics/shellDetector"; 
 import { detectTradeCorridors } from "../analytics/corridorHeatmap";
 import mlScore from "../analytics/mlAnomaly"; 
-import { detectInvoiceMismatch } from "../analytics/invoiceCheck";
+import detectInvoiceMismatch from "../analytics/invoiceCheck"; 
 
 export default function runIntelEngine(data) {
 
