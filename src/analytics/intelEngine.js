@@ -3,7 +3,7 @@ import { detectCycles } from "./cycleDetection";
 import { calculateShellScore } from "./shellProbability";
 import { detectTradeCorridors } from "./corridorHeatmap";
 import { detectmlScore} from "./mlAnomaly";
-import { invoiceCheck } from "./invoiceCheck";
+import { detectInvoiceMismatch } from "./invoiceCheck";
 
 export default function runIntelEngine(data) {
 
