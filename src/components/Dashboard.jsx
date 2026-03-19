@@ -116,28 +116,7 @@ const analyzeFraud = (rawData) => {
     return isNaN(n) ? 0 : n;
   };
 
-  let intelLayer = {};
-
-try {
-  intelLayer = runIntelEngine(cleanedData);
-} catch(e) {
-  console.error(e);
-}
-let rings = [];
-let cycles = [];
-let shells = [];
-let shellScores = {};
-let corridors = [];
-let anomalies = [];
-
-try { rings = fraudRings(cleanedData); } catch(e){ console.error("rings", e); }
-try { cycles = detectCycles(cleanedData); } catch(e){ console.error("cycles", e); }
-try { shells = detectShells(cleanedData); } catch(e){ console.error("shells", e); }
-try { shellScores = shellProbability(cleanedData); } catch(e){ console.error("shellProb", e); }
-try { corridors = corridorHeatmap(cleanedData); } catch(e){ console.error("corridors", e); }
-try { anomalies = mlAnomaly(cleanedData); } catch(e){ console.error("ml", e); }
-  
-  // 1️⃣ Clean data and normalize critical fields
+  // 1️⃣ Clean and normalize data
   const cleanedData = rawData.map(row => {
     const cleanRow = {};
     Object.keys(row).forEach(k => {
@@ -149,20 +128,16 @@ try { anomalies = mlAnomaly(cleanedData); } catch(e){ console.error("ml", e); }
       Importer: cleanRow["Importer"] || "UNKNOWN",
       Brand: cleanRow["Brand"] || "UNKNOWN",
       "HS Code": cleanRow["HS Code"] || "UNKNOWN",
-      // 1️⃣ REPLACEMENT LOGIC
-"Amount($)": parseVal(cleanRow["Amount($)"]),
-"Weight(Kg)": parseVal(cleanRow["Weight(Kg)"]),
-"Quantity": parseVal(cleanRow["Quantity"]),
-
-// New: Capture declared price and create a calculated fallback
-"_declaredPrice": parseVal(cleanRow["Unit Price($)"]),
-get _effectivePrice() {
-  const amt = parseVal(cleanRow["Amount($)"]);
-  const wgt = parseVal(cleanRow["Weight(Kg)"]);
-  const declared = parseVal(cleanRow["Unit Price($)"]);
-  // Use declared if > 0, otherwise calculate fallback
-  return (declared > 0) ? declared : (wgt > 0 ? amt / wgt : 0);
-},
+      "Amount($)": parseVal(cleanRow["Amount($)"]),
+      "Weight(Kg)": parseVal(cleanRow["Weight(Kg)"]),
+      "Quantity": parseVal(cleanRow["Quantity"]),
+      _declaredPrice: parseVal(cleanRow["Unit Price($)"]),
+      get _effectivePrice() {
+        const amt = parseVal(cleanRow["Amount($)"]);
+        const wgt = parseVal(cleanRow["Weight(Kg)"]);
+        const declared = parseVal(cleanRow["Unit Price($)"]);
+        return declared > 0 ? declared : (wgt > 0 ? amt / wgt : 0);
+      },
       "Origin Country": cleanRow["Origin Country"] || "UNKNOWN",
       "Destination Country": cleanRow["Destination Country"] || "UNKNOWN",
       Date: cleanRow["Date"] || ""
@@ -181,7 +156,7 @@ get _effectivePrice() {
   let totalWeight = 0;
   let totalAmt = 0;
 
-  // 3️⃣ Aggregate
+  // 3️⃣ Aggregate core stats
   cleanedData.forEach(r => {
     const exp = r.Exporter;
     const imp = r.Importer;
@@ -202,30 +177,27 @@ get _effectivePrice() {
     else if (amt < 5000) amountBuckets.medium++;
     else amountBuckets.large++;
 
-// Ensure entities exist with ALL fields initialized to 0
-[exp, imp].forEach(e => {
-  if (!entityStats[e]) {
-entityStats[e] = { 
-  self: 0, 
-  hs: 0, 
-  price: 0, 
-  total: 0, 
-  uTurns: 0,
-  priceAnomaly: 0, 
-  transactions: 0,
+    // Ensure entities exist
+    [exp, imp].forEach(e => {
+      if (!entityStats[e]) {
+        entityStats[e] = {
+          self: 0,
+          hs: 0,
+          price: 0,
+          total: 0,
+          transactions: 0,
+          priceAnomaly: 0,
+          mlRisk: 0,
+          shellRisk: 0,
+          ringScore: 0,
+          cycleScore: 0,
+          uTurns: 0
+        };
+      }
+    });
 
-  // NEW INTEL LAYER
-  mlRisk: 0,
-  shellRisk: 0,
-  ringScore: 0,
-  cycleScore: 0
-};
-  }
-});
-
-// Increment the exporter's activity
-entityStats[exp].total += 1;
-entityStats[exp].transactions += 1; // Used for the "Clean Invoices" math
+    entityStats[exp].total += 1;
+    entityStats[exp].transactions += 1;
 
     // HS aggregation
     const hsKey = `${exp}|${brand}|${hs}`;
@@ -276,28 +248,34 @@ entityStats[exp].transactions += 1; // Used for the "Clean Invoices" math
     brandAvgs[b] = brandPrices[b].reduce((a, c) => a + c, 0) / brandPrices[b].length;
   });
 
-// 5️⃣ Flag price anomalies and update ERS counters
-cleanedData.forEach(r => {
-  const exp = r.Exporter;
-  const brand = r.Brand;
-  const p = r._effectivePrice; 
-  const avg = brandAvgs[brand] || 0;
+  // 5️⃣ Flag price anomalies
+  cleanedData.forEach(r => {
+    const exp = r.Exporter;
+    const brand = r.Brand;
+    const p = r._effectivePrice;
+    const avg = brandAvgs[brand] || 0;
 
-  if (avg > 0 && (p > avg * 1.3 || p < avg * 0.7)) {
-    r._isPrice = true;
-    
-    // Increment the counters for the ERS Score Tab
-    if (entityStats[exp]) {
+    if (avg > 0 && (p > avg * 1.3 || p < avg * 0.7)) {
+      r._isPrice = true;
       entityStats[exp].price += 1;
-      entityStats[exp].priceAnomaly += 1; // This removes the NaN
+      entityStats[exp].priceAnomaly += 1;
+    } else {
+      r._isPrice = false;
     }
-  } else {
-    r._isPrice = false;
-  }
-});
+  });
 
-  // 6️⃣ Run external fraud engines safely
+  // 6️⃣ Run external fraud engines (after cleanedData exists)
+  let intelLayer = {}, rings = [], cycles = [], shells = [], shellScores = {}, corridors = [], anomalies = [];
   let tobaccoSignals = [], uTurnEntities = [], vatEntities = [], phantomEntities = [], priceEntities = [], mlScores = {}, fraudProb = 0;
+
+  try { intelLayer = runIntelEngine(cleanedData); } catch(e){ console.error(e); }
+  try { rings = detectFraudRings(cleanedData); } catch(e){ console.error("rings", e); }
+  try { cycles = detectUTurnTrade(cleanedData); } catch(e){ console.error("cycles", e); }
+  try { shells = detectShellCompanies(cleanedData); } catch(e){ console.error("shells", e); }
+  try { shellScores = calculateShellScore(cleanedData); } catch(e){ console.error("shellProb", e); }
+  try { corridors = detectTradeCorridors(cleanedData); } catch(e){ console.error("corridors", e); }
+  try { anomalies = mlScore(cleanedData); } catch(e){ console.error("ml", e); }
+
   try { tobaccoSignals = detectTobaccoFraud(cleanedData); } catch(e){ console.error(e); }
   try { uTurnEntities = detectUTurnTrade(cleanedData); } catch(e){ console.error(e); }
   try { vatEntities = detectVATCarousel(cleanedData); } catch(e){ console.error(e); }
@@ -306,67 +284,40 @@ cleanedData.forEach(r => {
   try { mlScores = runFraudEngine(cleanedData); } catch(e){ console.error(e); }
   try { fraudProb = calculateFraudProbability(cleanedData, intelLayer); } catch(e){ console.error(e); }
 
-  // 6.5️⃣ APPLY INTELLIGENCE SCORES TO ENTITIES
-Object.keys(entityStats).forEach(e => {
+  // 6.5️⃣ Apply intelligence scores to entities
+  Object.keys(entityStats).forEach(e => {
+    if (mlScores[e]) entityStats[e].mlRisk = mlScores[e];
+    if (shellScores[e]) entityStats[e].shellRisk = shellScores[e];
+    if (rings.find(r => r?.includes?.(e))) entityStats[e].ringScore += 1;
+    if (cycles.find(c => c?.includes?.(e))) entityStats[e].cycleScore += 1;
+  });
 
-  // ML Risk
-  if (mlScores && mlScores[e]) {
-    entityStats[e].mlRisk = mlScores[e];
-  }
-
-  // Shell Company Risk
-  if (shellScores && shellScores[e]) {
-    entityStats[e].shellRisk = shellScores[e];
-  }
-
-  // Fraud Rings
-  if (Array.isArray(rings) && rings.find(r => r?.includes?.(e))) {
-    entityStats[e].ringScore += 1;
-  }
-
-  // Cycle Detection (VAT loops / U-turns)
-  if (Array.isArray(cycles) && cycles.find(c => c?.includes?.(e))) {
-    entityStats[e].cycleScore += 1;
-  }
-
-});
-
-// 7️⃣ Update state safely
-// Since we already attached _isSelf, _isHS, and _isPrice in the loops above,
-// we just need to pass the cleanedData directly to the state.
-setData(cleanedData.map(r => ({
-  ...r,
-  _isSelf: r.Exporter === r.Importer,
-  _isHS: brandToHS[r.Brand] !== r["HS Code"]
-  // _isPrice is already attached from Step 5!
-})));
-setIntel(intelLayer);
-setFraudStats({ 
-  vat: vatEntities, 
-  phantom: phantomEntities, 
-  price: priceEntities, 
-  uturn: uTurnEntities, 
-  mlScores 
-});
-
-setStats({ 
-  totalWeight, 
-  totalAmt, 
-  entityStats, 
-  massBalance, 
-  selfAgg, 
-  routeIntel, 
-  hsAgg, 
-  brandAvgs, 
-  amountBuckets, 
-  tobaccoSignals, 
-  fraudProbability: fraudProb,
-  rings,
-  cycles,
-  shells,
-  corridors
-});
-  };
+  // 7️⃣ Update state
+  setData(cleanedData.map(r => ({
+    ...r,
+    _isSelf: r.Exporter === r.Importer,
+    _isHS: brandToHS[r.Brand] !== r["HS Code"]
+  })));
+  setIntel(intelLayer);
+  setFraudStats({ vat: vatEntities, phantom: phantomEntities, price: priceEntities, uturn: uTurnEntities, mlScores });
+  setStats({
+    totalWeight,
+    totalAmt,
+    entityStats,
+    massBalance,
+    selfAgg,
+    routeIntel,
+    hsAgg,
+    brandAvgs,
+    amountBuckets,
+    tobaccoSignals,
+    fraudProbability: fraudProb,
+    rings,
+    cycles,
+    shells,
+    corridors
+  });
+};
   return (
     <div className="min-h-screen bg-[#f8fafc] text-slate-900 pb-20 font-sans">
       <nav className="bg-[#020617] text-white py-6 px-8 shadow-2xl border-b-4 border-blue-600 sticky top-0 z-50">
