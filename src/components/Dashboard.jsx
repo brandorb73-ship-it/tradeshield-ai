@@ -38,6 +38,7 @@ export default function Dashboard() {
 const [activeFilter, setActiveFilter] = useState("all");
   const [stats, setStats] = useState({});
   const [intel, setIntel] = useState({});
+  const [selectedEntity, setSelectedEntity] = useState(null);
 const entityERS = useMemo(() => {
   if (!stats.entityStats) return [];
   return Object.entries(stats.entityStats).map(([name, s]) => {
@@ -304,7 +305,7 @@ cleanedData.forEach(r => {
   try { phantomEntities = detectPhantomExporter(cleanedData); } catch(e){ console.error(e); }
   try { priceEntities = detectPriceFraud(cleanedData); } catch(e){ console.error(e); }
   try { mlScores = runFraudEngine(cleanedData); } catch(e){ console.error(e); }
-  try { fraudProb = calculateFraudProbability(cleanedData); } catch(e){ console.error(e); }
+  try { fraudProb = calculateFraudProbability(cleanedData, intelLayer); } catch(e){ console.error(e); }
 
   // 6.5️⃣ APPLY INTELLIGENCE SCORES TO ENTITIES
 Object.keys(entityStats).forEach(e => {
@@ -444,6 +445,11 @@ CLEAR
                 <div className="bg-white rounded-[2rem] shadow-2xl border-4 border-slate-900 overflow-hidden">
                  
                     <table className="w-full text-left">
+                      <td>
+  {((row._isPrice ? 0.3 : 0) +
+    (row._isSelf ? 0.3 : 0) +
+    (row._isHS ? 0.2 : 0)).toFixed(2)}
+</td>
                       <thead className="bg-slate-900 text-white text-xs font-black uppercase">
   <tr>
     <th className="p-5">
@@ -543,6 +549,10 @@ AI Intelligence Summary
   <div className="space-y-6">
     {/* 1. The Entity Cards Loop */}
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div 
+  onClick={() => setSelectedEntity(entity.name)}
+  className="cursor-pointer"
+>
       {entityERS.map((entity) => (
         <div key={entity.name} className="bg-white p-6 rounded-[2.5rem] border-4 border-slate-900 shadow-xl">
           <h3 className="text-xl font-black uppercase truncate">{entity.name}</h3>
@@ -843,7 +853,11 @@ Possible fraud:
 {/* TAB: FRAUD HEATMAP */}
 {activeTab === "heat" && (
   <div className="bg-black p-6 rounded-2xl">
-      <RouteRiskMap data={data} fraudStats={fraudStats}/>
+      <RouteRiskMap 
+  data={data} 
+  fraudStats={fraudStats}
+  corridors={intel.corridors}
+/>
   </div>
 )}
           {/* TAB: HS INTEL (AGGREGATED) */}
@@ -880,7 +894,11 @@ Possible fraud:
 {/* TAB: NETWORK GRAPH */}
 {activeTab === "networkGraph" && (
   <div className="bg-white p-10 rounded-3xl border-4 border-slate-900 shadow-xl">
-      <NetworkGraph data={data} fraudStats={fraudStats}/>
+      <NetworkGraph 
+  data={data} 
+  fraudStats={fraudStats}
+  rings={intel.rings}
+/>
   </div>
 )}
           {activeTab === "guide" && <GuideView />}
@@ -929,7 +947,35 @@ function GuideView() {
                 <GuideItem title="Price Anomaly Intelligence" logic="±30% Baseline Deviation" desc="Identifies potential capital flight or tax evasion. Transaction prices are compared to the brand's average unit price across the entire dataset." />
                 <GuideItem title="Mass Balance Reconstruction" logic="Inward Weight vs Outward Weight" desc="Forensic tool that flags entities acting as transit hubs. High parity (e.g. 98%) suggests goods are not being consumed or processed locally." />
                 <GuideItem title="Circular Trade (Self-Trade)" logic="Exporter === Importer" desc="Identifies transactions where the beneficiary and sender are the same legal entity, a classic sign of round-tripping for VAT fraud." />
-      
+      <GuideItem 
+  title="Fraud Rings Detection"
+  logic="Graph Loop Analysis"
+  desc="Identifies multi-entity trade loops indicating cartel coordination or VAT carousel fraud."
+/>
+
+<GuideItem 
+  title="Shell Entity Probability"
+  logic="Behavioral + Network Scoring"
+  desc="Scores entities based on abnormal routing, low diversity, and circular trade patterns."
+/>
+
+<GuideItem 
+  title="Cycle Detection"
+  logic="Recursive Trade Loop Detection"
+  desc="Finds repeated circular trade paths used for laundering or tax arbitrage."
+/>
+
+<GuideItem 
+  title="Corridor Heatmap"
+  logic="Route Risk Aggregation"
+  desc="Maps high-risk smuggling corridors based on anomaly density and trade volume."
+/>
+
+<GuideItem 
+  title="ML Anomaly Detection"
+  logic="Outlier Ranking"
+  desc="Identifies top 1% abnormal transactions using statistical and behavioral signals."
+/>
             </div>
         </div>
     );
