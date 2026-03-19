@@ -1,6 +1,6 @@
 import { detectFraudRings } from "./fraudRings";
 import { detectCycles } from "./cycleDetection";
-import { calculateShellProbability } from "./shellProbability";
+import { calculateShellScore } from "./shellProbability";
 import { detectCorridors } from "./corridorHeatmap";
 import { detectMLAnomaly } from "./mlAnomaly";
 import { invoiceCheck } from "./invoiceCheck";
