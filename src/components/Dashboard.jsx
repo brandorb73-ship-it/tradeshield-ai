@@ -127,22 +127,22 @@ const analyzeFraud = (rawData) => {
     const amount = parseVal(row["Amount($)"]);
     const declaredPrice = parseVal(row["Unit Price($)"]);
     const effPrice = declaredPrice > 0 ? declaredPrice : (weight > 0 ? amount / weight : 0);
-    return {
-      Exporter: row["Exporter"] || "UNKNOWN",
-      Importer: row["Importer"] || "UNKNOWN",
-      Brand: row["Brand"] || "UNKNOWN",
-      "HS Code": row["HS Code"] || "UNKNOWN",
-      "Amount($)": amount,
-      "Weight(Kg)": weight,
-      "Quantity": parseVal(row["Quantity"]),
-      _declaredPrice: declaredPrice,
-      _effectivePrice: effPrice,
-      "Origin Country": row["Origin Country"] || "UNKNOWN",
-      "Destination Country": row["Destination Country"] || "UNKNOWN",
-      Date: row["Date"] || "",
-      // temp flags
-      _isSelf: row["Exporter"] === row["Importer"]
-    };
+return {
+  Exporter: row["Exporter"] || "UNKNOWN",
+  Importer: row["Importer"] || "UNKNOWN",
+  Brand: row["Brand"] || "UNKNOWN",
+  "HS Code": row["HS Code"] || "UNKNOWN",
+  "Amount($)": amount,
+  "Weight(Kg)": weight,
+  "Quantity": parseVal(row["Quantity"]),
+  _declaredPrice: declaredPrice,
+  _effectivePrice: effPrice,
+  "Origin Country": row["Origin Country"] || "UNKNOWN",
+  "Destination Country": row["Destination Country"] || "UNKNOWN",
+  Date: row["Date"] || "",
+  _isSelf: row["Exporter"] === row["Importer"],
+  _kgPerStick: qty > 0 ? weight / qty : 0   // <-- NEW
+};
   });
 
   // 2️⃣ Initialize aggregates
@@ -363,11 +363,6 @@ CLEAR
                 <div className="bg-white rounded-[2rem] shadow-2xl border-4 border-slate-900 overflow-hidden">
                  
                     <table className="w-full text-left">
-                      <td>
-  {((row._isPrice ? 0.3 : 0) +
-    (row._isSelf ? 0.3 : 0) +
-    (row._isHS ? 0.2 : 0)).toFixed(2)}
-</td>
                       <thead className="bg-slate-900 text-white text-xs font-black uppercase">
   <tr>
     <th className="p-5">
@@ -391,11 +386,19 @@ CLEAR
     <th className="p-5">Route</th>
     <th className="p-5 text-right">Weight (Kg)</th>
     <th className="p-5 text-right">Amount ($)</th>
+    <td className="p-5 text-right text-sm">
+  {row._kgPerStick?.toFixed(3)} KG/stick
+</td>
   </tr>
 </thead>
                         <tbody className="divide-y-2 divide-slate-100 text-slate-800 font-bold">
   {filteredData.map((row, i) => (
     <tr key={i} className={`${row._isSelf ? 'bg-red-50' : 'hover:bg-slate-50'} transition-colors`}>
+      <td>
+        {((row._isPrice ? 0.3 : 0) +
+          (row._isSelf ? 0.3 : 0) +
+          (row._isHS ? 0.2 : 0)).toFixed(2)}
+      </td>
       <td className="p-5">
         <div className="flex gap-1">
           {row._isSelf && <span className="bg-red-700 text-white text-[10px] px-2 py-1 rounded">SELF</span>}
