@@ -542,10 +542,8 @@ AI Intelligence Summary
         </p>
       </div>
     </div>
-
-  </div>   {/* ✅ CLOSE ERS MAIN DIV */}
-
-)}         {/* ✅ CLOSE ERS CONDITION */}
+</div>
+)}
           
           {/* TAB: MASS BALANCE */}
           {activeTab === "mass" && (
