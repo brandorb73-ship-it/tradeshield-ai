@@ -1,9 +1,9 @@
-import { detectFraudRings } from "./fraudRings";
-import { detectCycles } from "./cycleDetection";
-import { calculateShellScore } from "./shellProbability";
-import { detectTradeCorridors } from "./corridorHeatmap";
-import { detectmlScore} from "./mlAnomaly";
-import { detectInvoiceMismatch } from "./invoiceCheck";
+import { detectFraudRings } from "../analytics/fraudRings";
+import { detectCycles } from "../analytics/cycleDetection";
+import { calculateShellScore } from "../analytics/shellDetector";
+import { detectTradeCorridors } from "../analytics/corridorHeatmap";
+import { detectmlScore} from "../analytics/mlAnomaly";
+import { detectInvoiceMismatch } from "../analytics/invoiceCheck";
 
 export default function runIntelEngine(data) {
 
