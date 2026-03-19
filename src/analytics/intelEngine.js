@@ -1,9 +1,9 @@
 import { detectFraudRings } from "./fraudRings";
 import { detectCycles } from "./cycleDetection";
 import { calculateShellProbability } from "./shellProbability";
-import detectCorridors from "./corridorHeatmap";
-import detectMLAnomaly from "./mlAnomaly";
-import invoiceCheck from "./invoiceCheck";
+import { detectCorridors } from "./corridorHeatmap";
+import { detectMLAnomaly } from "./mlAnomaly";
+import { invoiceCheck } from "./invoiceCheck";
 
 export default function runIntelEngine(data) {
 
