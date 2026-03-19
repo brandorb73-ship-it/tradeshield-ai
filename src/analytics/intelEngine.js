@@ -16,10 +16,10 @@ export default function runIntelEngine(data) {
 
   try { rings = detectFraudRings(data); } catch(e){}
   try { cycles = detectCycles(data); } catch(e){}
-  try { shellScores = calculateShellProbability(data); } catch(e){}
-  try { corridors = detectCorridors(data); } catch(e){}
-  try { anomalies = detectMLAnomaly(data); } catch(e){}
-  try { invoiceFlags = invoiceCheck(data); } catch(e){}
+  try { shellScores = calculateShellScore(data); } catch(e){}
+  try { corridors = detectTradeCorridors(data); } catch(e){}
+  try { anomalies = detectmlScore(data); } catch(e){}
+  try { invoiceFlags = detectInvoiceMismatch(data); } catch(e){}
 
   return {
     rings,
