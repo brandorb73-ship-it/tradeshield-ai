@@ -1,75 +1,46 @@
-export function calculateFraudProbability(data, fraudStats, shellScores){
+export function calculateFraudProbability(data, intel) {
 
-return data.map(r=>{
+  let score = 0;
 
-let score = 0;
-let reasons = [];
+  const total = data.length || 1;
 
-/* -----------------------------
-VAT / Fraud Signals
------------------------------*/
-if(fraudStats?.vat?.includes(r.Exporter)){
-score += 25;
-reasons.push("VAT carousel involvement");
-}
+  const weights = {
+    price: 0.2,
+    vat: 0.2,
+    rings: 0.2,
+    cycles: 0.15,
+    shell: 0.15,
+    anomaly: 0.1
+  };
 
-if(fraudStats?.phantom?.includes(r.Exporter)){
-score += 20;
-reasons.push("Phantom exporter pattern");
-}
+  const priceFlags = data.filter(d => d._isPrice).length / total;
+  const selfFlags = data.filter(d => d._isSelf).length / total;
 
-if(fraudStats?.price?.includes(r.Exporter)){
-score += 15;
-reasons.push("Price manipulation detected");
-}
+  const ringScore = (intel.rings?.length || 0) / 10;
+  const cycleScore = (intel.cycles?.length || 0) / 10;
 
-/* -----------------------------
-Shell Risk
------------------------------*/
-const shell = shellScores[r.Exporter] || 0;
+  const shellScore = Object.values(intel.shellScores || {})
+    .reduce((a, c) => a + c, 0) / (Object.keys(intel.shellScores || {}).length || 1);
 
-score += shell * 0.3;
+  const anomalyScore = (intel.anomalies?.length || 0) / total;
 
-if(shell > 70){
-reasons.push("High shell company probability");
-}
+  score =
+    priceFlags * weights.price +
+    selfFlags * weights.vat +
+    ringScore * weights.rings +
+    cycleScore * weights.cycles +
+    shellScore * weights.shell +
+    anomalyScore * weights.anomaly;
 
-/* -----------------------------
-Price Anomaly
------------------------------*/
-const unitPrice = parseFloat(r["Unit Price($)"]||0);
-
-if(unitPrice > 25){
-score += 10;
-reasons.push("High unit price anomaly");
-}
-
-/* -----------------------------
-Weight vs Value Density
------------------------------*/
-const density =
-parseFloat(r["Amount($)"]||0) /
-(parseFloat(r["Weight(Kg)"]||1));
-
-if(density > 80){
-score += 15;
-reasons.push("High value per kg (smuggling indicator)");
-}
-
-/* -----------------------------
-Clamp Score
------------------------------*/
-score = Math.min(100, Math.round(score));
-
-return {
-...r,
-fraudScore: score,
-fraudLevel:
-score > 70 ? "HIGH" :
-score > 40 ? "MEDIUM" : "LOW",
-reasons
-};
-
-});
-
+  return {
+    score: Math.min(1, score),
+    breakdown: {
+      priceFlags,
+      selfFlags,
+      ringScore,
+      cycleScore,
+      shellScore,
+      anomalyScore
+    }
+  };
 }
