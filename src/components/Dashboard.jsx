@@ -117,34 +117,37 @@ const analyzeFraud = (rawData) => {
   };
 
   // 1️⃣ Preprocess & normalize
-  const cleanedData = rawData.map(r => {
-    const row = {};
-    Object.keys(r).forEach(k => {
-      const key = k.trim();
-      row[key] = typeof r[k] === "string" ? r[k].trim() : r[k];
-    });
-    const weight = parseVal(row["Weight(Kg)"]);
-    const amount = parseVal(row["Amount($)"]);
-    const declaredPrice = parseVal(row["Unit Price($)"]);
-    const effPrice = declaredPrice > 0 ? declaredPrice : (weight > 0 ? amount / weight : 0);
-     const qty = parseFloat(row["Quantity"]) || 0;
-return {
-  Exporter: row["Exporter"] || "UNKNOWN",
-  Importer: row["Importer"] || "UNKNOWN",
-  Brand: row["Brand"] || "UNKNOWN",
-  "HS Code": row["HS Code"] || "UNKNOWN",
-  "Amount($)": amount,
-  "Weight(Kg)": weight,
-  "Quantity": qty,                 // <-- define qty first
-  _declaredPrice: declaredPrice,
-  _effectivePrice: effPrice,
-  "Origin Country": row["Origin Country"] || "UNKNOWN",
-  "Destination Country": row["Destination Country"] || "UNKNOWN",
-  Date: row["Date"] || "",
-  _isSelf: row["Exporter"] === row["Importer"],
-  _kgPerStick: qty > 0 ? weight / qty : 0   // ✅ now safe
-};
+ const cleanedData = rawData.map((r) => {
+  const row = {};
+  Object.keys(r).forEach((k) => {
+    const key = k.trim();
+    row[key] = typeof r[k] === "string" ? r[k].trim() : r[k];
   });
+
+  const weight = parseFloat(row["Weight(Kg)"]) || 0;
+  const amount = parseFloat(row["Amount($)"]) || 0;
+  const declaredPrice = parseFloat(row["Unit Price($)"]) || 0;
+  const effPrice = declaredPrice > 0 ? declaredPrice : weight > 0 ? amount / weight : 0;
+
+  const qty = parseFloat(row["Quantity"]) || 0; // ✅ safe, inside map
+
+  return {
+    Exporter: row["Exporter"] || "UNKNOWN",
+    Importer: row["Importer"] || "UNKNOWN",
+    Brand: row["Brand"] || "UNKNOWN",
+    "HS Code": row["HS Code"] || "UNKNOWN",
+    "Amount($)": amount,
+    "Weight(Kg)": weight,
+    Quantity: qty,               // store qty
+    _declaredPrice: declaredPrice,
+    _effectivePrice: effPrice,
+    "Origin Country": row["Origin Country"] || "UNKNOWN",
+    "Destination Country": row["Destination Country"] || "UNKNOWN",
+    Date: row["Date"] || "",
+    _isSelf: row["Exporter"] === row["Importer"],
+    _kgPerStick: qty > 0 ? weight / qty : 0
+  };
+});
 
   // 2️⃣ Initialize aggregates
   const entityStats = {};
