@@ -2,7 +2,7 @@ import { detectFraudRings } from "./fraudRings";
 import { detectCycles } from "./cycleDetection";
 import { calculateShellScore } from "./shellProbability";
 import { detectTradeCorridors } from "./corridorHeatmap";
-import { detectMLAnomaly } from "./mlAnomaly";
+import { detectmlScore} from "./mlAnomaly";
 import { invoiceCheck } from "./invoiceCheck";
 
 export default function runIntelEngine(data) {
