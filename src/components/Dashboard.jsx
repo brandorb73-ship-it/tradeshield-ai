@@ -24,7 +24,7 @@ import { detectFraudRings } from "../analytics/fraudRings";
 import detectShellCompanies from "../analytics/shellDetector";  
 import { calculateShellScore } from "../analytics/shellProbability";
 import { detectTradeCorridors } from "../analytics/corridorHeatmap";
-import { detectmlScore } from "../analytics/mlAnomaly";
+import mlScore from "../analytics/mlAnomaly"; 
 import { detectInvoiceMismatch } from "../analytics/invoiceCheck";
 import generateNarrative from "../analytics/aiNarrative";
 
