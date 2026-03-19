@@ -19,6 +19,7 @@ import {calculateFraudProbability} from "../analytics/fraudProbability";
 import { financialAnalysis } from "../analytics/financialForensics";
 import detectUTurnTrade from "../analytics/uTurnTrade";
 import FraudIntelligenceCard from "./FraudIntelligenceCard";
+import runIntelEngine from "../analytics/intelEngine";
 import generateNarrative from "../analytics/aiNarrative";
 
 export default function Dashboard() {
@@ -29,6 +30,7 @@ export default function Dashboard() {
   const [activeTab, setActiveTab] = useState("audit");
 const [activeFilter, setActiveFilter] = useState("all");
   const [stats, setStats] = useState({});
+  const [intel, setIntel] = useState({});
 const entityERS = useMemo(() => {
   if (!stats.entityStats) return [];
   return Object.entries(stats.entityStats).map(([name, s]) => {
@@ -100,6 +102,13 @@ const analyzeFraud = (rawData) => {
     return isNaN(n) ? 0 : n;
   };
 
+  let intelLayer = {};
+
+try {
+  intelLayer = runIntelEngine(cleanedData);
+} catch(e) {
+  console.error(e);
+}
   // 1️⃣ Clean data and normalize critical fields
   const cleanedData = rawData.map(row => {
     const cleanRow = {};
@@ -273,7 +282,7 @@ setData(cleanedData.map(r => ({
   _isHS: brandToHS[r.Brand] !== r["HS Code"]
   // _isPrice is already attached from Step 5!
 })));
-
+setIntel(intelLayer);
 setFraudStats({ 
   vat: vatEntities, 
   phantom: phantomEntities, 
