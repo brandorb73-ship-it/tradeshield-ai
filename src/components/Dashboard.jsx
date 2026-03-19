@@ -522,27 +522,31 @@ AI Intelligence Summary
       }
 />
     {/* METHODOLOGY FOOTER */}
-<div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6 border-t-2 border-slate-100 pt-8">
-  <div>
-    <h4 className="text-[10px] font-black uppercase text-slate-400 mb-2 tracking-widest">What is ERS?</h4>
-    <p className="text-xs text-slate-600 leading-relaxed">
-      <strong>Entity Risk Scoring</strong> is a weighted forensic index (0-100) that aggregates suspicious trade patterns like self-trading, HS mismatches, and price manipulation.
-    </p>
-  </div>
-  <div>
-    <h4 className="text-[10px] font-black uppercase text-slate-400 mb-2 tracking-widest">Brand Median Logic</h4>
-    <p className="text-xs text-slate-600 leading-relaxed">
-      The system calculates a global baseline price for each brand by auditing the <strong>Total Value vs Total Weight</strong> across all shipments in the current dataset.
-    </p>
-  </div>
-  <div>
-    <h4 className="text-[10px] font-black uppercase text-slate-400 mb-2 tracking-widest">Anomaly Detection</h4>
-    <p className="text-xs text-slate-600 leading-relaxed">
-      Transactions are flagged if the unit price deviates by <strong>±30%</strong> from the brand median, a primary indicator of potential tax circumvention or capital flight.
-    </p>
-  </div>
-</div>
-)}
+    <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6 border-t-2 border-slate-100 pt-8">
+      <div>
+        <h4 className="text-[10px] font-black uppercase text-slate-400 mb-2 tracking-widest">What is ERS?</h4>
+        <p className="text-xs text-slate-600 leading-relaxed">
+          <strong>Entity Risk Scoring</strong> is a weighted forensic index (0-100) that aggregates suspicious trade patterns like self-trading, HS mismatches, and price manipulation.
+        </p>
+      </div>
+      <div>
+        <h4 className="text-[10px] font-black uppercase text-slate-400 mb-2 tracking-widest">Brand Median Logic</h4>
+        <p className="text-xs text-slate-600 leading-relaxed">
+          The system calculates a global baseline price for each brand by auditing the <strong>Total Value vs Total Weight</strong> across all shipments in the current dataset.
+        </p>
+      </div>
+      <div>
+        <h4 className="text-[10px] font-black uppercase text-slate-400 mb-2 tracking-widest">Anomaly Detection</h4>
+        <p className="text-xs text-slate-600 leading-relaxed">
+          Transactions are flagged if the unit price deviates by <strong>±30%</strong> from the brand median.
+        </p>
+      </div>
+    </div>
+
+  </div>   {/* ✅ CLOSE ERS MAIN DIV */}
+
+)}         {/* ✅ CLOSE ERS CONDITION */}
+          
           {/* TAB: MASS BALANCE */}
           {activeTab === "mass" && (
               <div className="bg-white p-12 rounded-[3rem] shadow-2xl border-4 border-slate-900 animate-in fade-in">
