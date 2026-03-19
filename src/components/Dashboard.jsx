@@ -116,35 +116,36 @@ const analyzeFraud = (rawData) => {
     return isNaN(n) ? 0 : n;
   };
 
-  // 1️⃣ Clean and normalize data
-  const cleanedData = rawData.map(row => {
-    const cleanRow = {};
-    Object.keys(row).forEach(k => {
+  // 1️⃣ Preprocess & normalize
+  const cleanedData = rawData.map(r => {
+    const row = {};
+    Object.keys(r).forEach(k => {
       const key = k.trim();
-      cleanRow[key] = typeof row[k] === "string" ? row[k].trim() : row[k];
+      row[key] = typeof r[k] === "string" ? r[k].trim() : r[k];
     });
+    const weight = parseVal(row["Weight(Kg)"]);
+    const amount = parseVal(row["Amount($)"]);
+    const declaredPrice = parseVal(row["Unit Price($)"]);
+    const effPrice = declaredPrice > 0 ? declaredPrice : (weight > 0 ? amount / weight : 0);
     return {
-      Exporter: cleanRow["Exporter"] || "UNKNOWN",
-      Importer: cleanRow["Importer"] || "UNKNOWN",
-      Brand: cleanRow["Brand"] || "UNKNOWN",
-      "HS Code": cleanRow["HS Code"] || "UNKNOWN",
-      "Amount($)": parseVal(cleanRow["Amount($)"]),
-      "Weight(Kg)": parseVal(cleanRow["Weight(Kg)"]),
-      "Quantity": parseVal(cleanRow["Quantity"]),
-      _declaredPrice: parseVal(cleanRow["Unit Price($)"]),
-      get _effectivePrice() {
-        const amt = parseVal(cleanRow["Amount($)"]);
-        const wgt = parseVal(cleanRow["Weight(Kg)"]);
-        const declared = parseVal(cleanRow["Unit Price($)"]);
-        return declared > 0 ? declared : (wgt > 0 ? amt / wgt : 0);
-      },
-      "Origin Country": cleanRow["Origin Country"] || "UNKNOWN",
-      "Destination Country": cleanRow["Destination Country"] || "UNKNOWN",
-      Date: cleanRow["Date"] || ""
+      Exporter: row["Exporter"] || "UNKNOWN",
+      Importer: row["Importer"] || "UNKNOWN",
+      Brand: row["Brand"] || "UNKNOWN",
+      "HS Code": row["HS Code"] || "UNKNOWN",
+      "Amount($)": amount,
+      "Weight(Kg)": weight,
+      "Quantity": parseVal(row["Quantity"]),
+      _declaredPrice: declaredPrice,
+      _effectivePrice: effPrice,
+      "Origin Country": row["Origin Country"] || "UNKNOWN",
+      "Destination Country": row["Destination Country"] || "UNKNOWN",
+      Date: row["Date"] || "",
+      // temp flags
+      _isSelf: row["Exporter"] === row["Importer"]
     };
   });
 
-  // 2️⃣ Initialize containers
+  // 2️⃣ Initialize aggregates
   const entityStats = {};
   const hsAgg = {};
   const massBalance = {};
@@ -156,18 +157,9 @@ const analyzeFraud = (rawData) => {
   let totalWeight = 0;
   let totalAmt = 0;
 
-  // 3️⃣ Aggregate core stats
+  // 3️⃣ Single pass for all stats
   cleanedData.forEach(r => {
-    const exp = r.Exporter;
-    const imp = r.Importer;
-    const brand = r.Brand;
-    const hs = r["HS Code"];
-    const amt = r["Amount($)"];
-    const weight = r["Weight(Kg)"];
-    const qty = r.Quantity;
-    const origin = r["Origin Country"];
-    const dest = r["Destination Country"];
-    const unitPrice = weight > 0 ? amt / weight : 0;
+    const { Exporter: exp, Importer: imp, Brand: brand, "HS Code": hs, "Amount($)": amt, "Weight(Kg)": weight, Quantity: qty, "Origin Country": origin, "Destination Country": dest, _effectivePrice: unitPrice } = r;
 
     totalWeight += weight;
     totalAmt += amt;
@@ -177,25 +169,10 @@ const analyzeFraud = (rawData) => {
     else if (amt < 5000) amountBuckets.medium++;
     else amountBuckets.large++;
 
-    // Ensure entities exist
+    // Initialize entity stats
     [exp, imp].forEach(e => {
-      if (!entityStats[e]) {
-        entityStats[e] = {
-          self: 0,
-          hs: 0,
-          price: 0,
-          total: 0,
-          transactions: 0,
-          priceAnomaly: 0,
-          mlRisk: 0,
-          shellRisk: 0,
-          ringScore: 0,
-          cycleScore: 0,
-          uTurns: 0
-        };
-      }
+      if (!entityStats[e]) entityStats[e] = { self: 0, hs: 0, price: 0, total: 0, transactions: 0, priceAnomaly: 0, mlRisk: 0, shellRisk: 0, ringScore: 0, cycleScore: 0, uTurns: 0 };
     });
-
     entityStats[exp].total += 1;
     entityStats[exp].transactions += 1;
 
@@ -219,6 +196,7 @@ const analyzeFraud = (rawData) => {
       selfAgg[exp].amount += amt;
       selfAgg[exp].countries.add(origin);
       selfAgg[exp].countries.add(dest);
+      r._isSelf = true;
     }
 
     // Mass balance
@@ -240,41 +218,35 @@ const analyzeFraud = (rawData) => {
     // Brand prices
     if (!brandPrices[brand]) brandPrices[brand] = [];
     if (unitPrice > 0) brandPrices[brand].push(unitPrice);
+
+    // price anomaly flag (_isPrice)
+    const avgPrice = brandPrices[brand].reduce((a, c) => a + c, 0) / brandPrices[brand].length;
+    r._isPrice = avgPrice > 0 && (unitPrice > avgPrice * 1.3 || unitPrice < avgPrice * 0.7);
+    if (r._isPrice) entityStats[exp].price += 1;
   });
 
-  // 4️⃣ Calculate brand averages
+  // Compute brand averages
   const brandAvgs = {};
   Object.keys(brandPrices).forEach(b => {
     brandAvgs[b] = brandPrices[b].reduce((a, c) => a + c, 0) / brandPrices[b].length;
   });
 
-  // 5️⃣ Flag price anomalies
+  // Compute HS mismatch flag (_isHS)
   cleanedData.forEach(r => {
-    const exp = r.Exporter;
-    const brand = r.Brand;
-    const p = r._effectivePrice;
-    const avg = brandAvgs[brand] || 0;
-
-    if (avg > 0 && (p > avg * 1.3 || p < avg * 0.7)) {
-      r._isPrice = true;
-      entityStats[exp].price += 1;
-      entityStats[exp].priceAnomaly += 1;
-    } else {
-      r._isPrice = false;
-    }
+    r._isHS = brandToHS[r.Brand] !== r["HS Code"];
   });
 
-  // 6️⃣ Run external fraud engines (after cleanedData exists)
+  // ✅ Run external engines AFTER all flags
   let intelLayer = {}, rings = [], cycles = [], shells = [], shellScores = {}, corridors = [], anomalies = [];
   let tobaccoSignals = [], uTurnEntities = [], vatEntities = [], phantomEntities = [], priceEntities = [], mlScores = {}, fraudProb = 0;
 
   try { intelLayer = runIntelEngine(cleanedData); } catch(e){ console.error(e); }
-  try { rings = detectFraudRings(cleanedData); } catch(e){ console.error("rings", e); }
-  try { cycles = detectUTurnTrade(cleanedData); } catch(e){ console.error("cycles", e); }
-  try { shells = detectShellCompanies(cleanedData); } catch(e){ console.error("shells", e); }
-  try { shellScores = calculateShellScore(cleanedData); } catch(e){ console.error("shellProb", e); }
-  try { corridors = detectTradeCorridors(cleanedData); } catch(e){ console.error("corridors", e); }
-  try { anomalies = mlScore(cleanedData); } catch(e){ console.error("ml", e); }
+  try { rings = detectFraudRings(cleanedData); } catch(e){ console.error(e); }
+  try { cycles = detectUTurnTrade(cleanedData); } catch(e){ console.error(e); }
+  try { shells = detectShellCompanies(cleanedData); } catch(e){ console.error(e); }
+  try { shellScores = calculateShellScore(cleanedData); } catch(e){ console.error(e); }
+  try { corridors = detectTradeCorridors(cleanedData); } catch(e){ console.error(e); }
+  try { anomalies = mlScore(cleanedData); } catch(e){ console.error(e); }
 
   try { tobaccoSignals = detectTobaccoFraud(cleanedData); } catch(e){ console.error(e); }
   try { uTurnEntities = detectUTurnTrade(cleanedData); } catch(e){ console.error(e); }
@@ -284,7 +256,7 @@ const analyzeFraud = (rawData) => {
   try { mlScores = runFraudEngine(cleanedData); } catch(e){ console.error(e); }
   try { fraudProb = calculateFraudProbability(cleanedData, intelLayer); } catch(e){ console.error(e); }
 
-  // 6.5️⃣ Apply intelligence scores to entities
+  // Apply external scores to entities
   Object.keys(entityStats).forEach(e => {
     if (mlScores[e]) entityStats[e].mlRisk = mlScores[e];
     if (shellScores[e]) entityStats[e].shellRisk = shellScores[e];
@@ -292,12 +264,8 @@ const analyzeFraud = (rawData) => {
     if (cycles.find(c => c?.includes?.(e))) entityStats[e].cycleScore += 1;
   });
 
-  // 7️⃣ Update state
-  setData(cleanedData.map(r => ({
-    ...r,
-    _isSelf: r.Exporter === r.Importer,
-    _isHS: brandToHS[r.Brand] !== r["HS Code"]
-  })));
+  // Update React state
+  setData(cleanedData);
   setIntel(intelLayer);
   setFraudStats({ vat: vatEntities, phantom: phantomEntities, price: priceEntities, uturn: uTurnEntities, mlScores });
   setStats({
