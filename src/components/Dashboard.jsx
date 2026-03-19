@@ -21,12 +21,10 @@ import detectUTurnTrade from "../analytics/uTurnTrade";
 import FraudIntelligenceCard from "./FraudIntelligenceCard";
 import runIntelEngine from "../analytics/intelEngine";
 import { detectFraudRings } from "../analytics/fraudRings";
-import detectCycles from "../analytics/cycleDetection";
-import detectShells from "../analytics/shellDetector";
-import shellProbability from "../analytics/shellProbability";
-import corridorHeatmap from "../analytics/corridorHeatmap";
-import mlAnomaly from "../analytics/mlAnomaly";
-import invoiceCheck from "../analytics/invoiceCheck";
+import { calculateShellScore } from "../analytics/shellDetector";
+import { detectTradeCorridors } from "../analytics/corridorHeatmap";
+import { detectmlScore } from "../analytics/mlAnomaly";
+import { detectInvoiceMismatch } from "../analytics/invoiceCheck";
 import generateNarrative from "../analytics/aiNarrative";
 
 export default function Dashboard() {
