@@ -549,13 +549,14 @@ AI Intelligence Summary
   <div className="space-y-6">
     {/* 1. The Entity Cards Loop */}
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-      <div 
-  onClick={() => setSelectedEntity(entity.name)}
-  className="cursor-pointer"
->
       {entityERS.map((entity) => (
         <div key={entity.name} className="bg-white p-6 rounded-[2.5rem] border-4 border-slate-900 shadow-xl">
-          <h3 className="text-xl font-black uppercase truncate">{entity.name}</h3>
+          <h3 
+  onClick={() => setSelectedEntity(entity.name)}
+  className="text-xl font-black uppercase truncate cursor-pointer hover:text-blue-600"
+>
+  {entity.name}
+</h3>
           
           {/* PLACE THE FORENSIC EVIDENCE BLOCK HERE */}
           <div className="mt-4 p-4 bg-slate-50 rounded-2xl border border-slate-200">
@@ -598,6 +599,11 @@ AI Intelligence Summary
             Top risk: <span className="uppercase font-black">{entityERS.find(e => e.priceAnomaly > 0)?.name}</span>.
           </span>
         )}
+        <AISummary
+  title="ERS Intelligence Summary"
+  icon={Brain}
+  content={generateNarrative(stats, fraudStats)}
+/>
       </div>
     </>
       }
@@ -651,6 +657,7 @@ AI Intelligence Summary
                         })
                     ))}
                   </div>
+                
               </div>
           )}
 
@@ -736,7 +743,11 @@ Possible fraud:
 </div>
 
 </div>
-
+<AISummary
+  title="Circular Trade Insight"
+  icon={ArrowLeftRight}
+  content={`Detected ${data.filter(d=>d._isSelf).length} circular trades. Potential VAT carousel behavior.`}
+/>
 </div>
 
 );
@@ -819,7 +830,11 @@ Possible fraud:
     ))}
 
   </div>
-
+<AISummary
+  title="Financial Risk Insight"
+  icon={DollarSign}
+  content={`Anomaly rate is ${fin.anomalyRate}%. Estimated tax leakage: $${fin.taxLoss.toLocaleString()}.`}
+ />
 </div>
 
 )}
@@ -847,6 +862,11 @@ Possible fraud:
               </div>
           ))}
       </div>
+    <AISummary
+  title="Corridor Intelligence"
+  icon={Globe}
+  content={`High-volume corridors detected: ${Object.keys(stats.routeIntel).length}`}
+ />
   </div>
 )}
 
@@ -881,6 +901,11 @@ Possible fraud:
                           </div>
                       ))}
                   </div>
+                    <AISummary
+      title="HS Intelligence Insight"
+      icon={BookOpen}
+      content={`Detected ${Object.keys(stats.hsAgg || {}).length} aggregated HS clusters across entities.`}
+    />
               </div>
           )}
 
@@ -889,6 +914,12 @@ Possible fraud:
     stats={stats}
     fraudStats={fraudStats}
   />
+<AISummary
+      title="Fraud Engine Summary"
+      icon={AlertTriangle}
+      content={generateNarrative(stats, fraudStats)}
+    />
+  </>
 )}
 
 {/* TAB: NETWORK GRAPH */}
@@ -899,16 +930,26 @@ Possible fraud:
   fraudStats={fraudStats}
   rings={intel.rings}
 />
+    <AISummary
+      title="Network Intelligence"
+      icon={Layers}
+      content={`Detected ${intel?.rings?.length || 0} potential fraud rings in the trade network.`}
+    />
   </div>
 )}
           {activeTab === "guide" && <GuideView />}
-
+{selectedEntity && ( 
+  <EntityInvestigation
+    entity={selectedEntity}
+    data={data}
+    stats={stats}
+    intel={stats}   // use stats for now (safe)
+  />
+)}
         </main>
       )}
     </div>
-  );
-}
-
+  
 // --- SHARED COMPONENTS ---
 
 function TabBtn({ active, onClick, icon, label }) {
