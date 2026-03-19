@@ -21,7 +21,7 @@ import detectUTurnTrade from "../analytics/uTurnTrade";
 import FraudIntelligenceCard from "./FraudIntelligenceCard";
 import runIntelEngine from "../analytics/intelEngine";
 import { detectFraudRings } from "../analytics/fraudRings";
-import { calculateShellScore } from "../analytics/shellDetector";
+import { detectShellCompanies } from "../analytics/shellDetector";
 import { detectTradeCorridors } from "../analytics/corridorHeatmap";
 import { detectmlScore } from "../analytics/mlAnomaly";
 import { detectInvoiceMismatch } from "../analytics/invoiceCheck";
