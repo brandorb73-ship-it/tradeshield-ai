@@ -1,5 +1,5 @@
-import detectFraudRings from "./fraudRings";
-import detectCycles from "./cycleDetection";
+import { detectFraudRings } from "./fraudRings";
+import { detectCycles } from "./cycleDetection";
 import { calculateShellProbability } from "./shellProbability";
 import detectCorridors from "./corridorHeatmap";
 import detectMLAnomaly from "./mlAnomaly";
