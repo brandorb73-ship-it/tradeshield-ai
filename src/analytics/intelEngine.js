@@ -3,7 +3,7 @@ import { detectCycles } from "../analytics/cycleDetection";
 import { calculateShellScore } from "../analytics/shellProbability"; 
 import detectShellCompanies from "../analytics/shellDetector"; 
 import { detectTradeCorridors } from "../analytics/corridorHeatmap";
-import { detectmlScore} from "../analytics/mlAnomaly";
+import mlScore from "../analytics/mlAnomaly"; 
 import { detectInvoiceMismatch } from "../analytics/invoiceCheck";
 
 export default function runIntelEngine(data) {
@@ -21,7 +21,7 @@ export default function runIntelEngine(data) {
   try { shellScores = detectShellCompanies(data); } catch(e){}
   try { shellProbability = calculateShellScore(data); } catch(e){}
   try { corridors = detectTradeCorridors(data); } catch(e){}
-  try { anomalies = detectmlScore(data); } catch(e){}
+  try { anomalies = mlScore(data); } catch(e){}
   try { invoiceFlags = detectInvoiceMismatch(data); } catch(e){}
 
   return {
