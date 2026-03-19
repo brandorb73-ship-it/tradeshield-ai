@@ -127,6 +127,7 @@ const analyzeFraud = (rawData) => {
     const amount = parseVal(row["Amount($)"]);
     const declaredPrice = parseVal(row["Unit Price($)"]);
     const effPrice = declaredPrice > 0 ? declaredPrice : (weight > 0 ? amount / weight : 0);
+     const qty = parseFloat(row["Quantity"]) || 0;
 return {
   Exporter: row["Exporter"] || "UNKNOWN",
   Importer: row["Importer"] || "UNKNOWN",
@@ -134,14 +135,14 @@ return {
   "HS Code": row["HS Code"] || "UNKNOWN",
   "Amount($)": amount,
   "Weight(Kg)": weight,
-  "Quantity": parseVal(row["Quantity"]),
+  "Quantity": qty,                 // <-- define qty first
   _declaredPrice: declaredPrice,
   _effectivePrice: effPrice,
   "Origin Country": row["Origin Country"] || "UNKNOWN",
   "Destination Country": row["Destination Country"] || "UNKNOWN",
   Date: row["Date"] || "",
   _isSelf: row["Exporter"] === row["Importer"],
-  _kgPerStick: qty > 0 ? weight / qty : 0   // <-- NEW
+  _kgPerStick: qty > 0 ? weight / qty : 0   // ✅ now safe
 };
   });
 
