@@ -145,7 +145,8 @@ const analyzeFraud = (rawData) => {
     "Destination Country": row["Destination Country"] || "UNKNOWN",
     Date: row["Date"] || "",
     _isSelf: row["Exporter"] === row["Importer"],
-    _kgPerStick: qty > 0 ? weight / qty : 0
+   _kgPerStick: kgPerStick,
+  _isDensityAnomaly: kgPerStick > 0.001 || kgPerStick < 0.0005
   };
 });
 
@@ -396,16 +397,23 @@ CLEAR
                         <tbody className="divide-y-2 divide-slate-100 text-slate-800 font-bold">
   {filteredData.map((row, i) => (
     <tr key={i} className={`${row._isSelf ? 'bg-red-50' : 'hover:bg-slate-50'} transition-colors`}>
-      <td>
-        {((row._isPrice ? 0.3 : 0) +
-          (row._isSelf ? 0.3 : 0) +
-          (row._isHS ? 0.2 : 0)).toFixed(2)}
-      </td>
+<td>
+  {((row._isPrice ? 0.25 : 0) +
+    (row._isSelf ? 0.25 : 0) +
+    (row._isHS ? 0.2 : 0) +
+    (row._isDensityAnomaly ? 0.3 : 0)
+  ).toFixed(2)}
+</td>
       <td className="p-5">
         <div className="flex gap-1">
           {row._isSelf && <span className="bg-red-700 text-white text-[10px] px-2 py-1 rounded">SELF</span>}
           {row._isHS && <span className="bg-orange-600 text-white text-[10px] px-2 py-1 rounded">HS</span>}
           {row._isPrice && <span className="bg-purple-700 text-white text-[10px] px-2 py-1 rounded">PRICE</span>}
+          {row._isDensityAnomaly && (
+  <span className="bg-yellow-600 text-white text-[10px] px-2 py-1 rounded">
+    DENSITY
+  </span>
+)}
         </div>
       </td>
       <td className="p-5 text-sm">{row.Date}</td>
@@ -426,7 +434,9 @@ CLEAR
       <td className="p-5 text-right text-lg font-black text-slate-900">
         ${(row['Amount($)'] || 0).toLocaleString()}
       </td>
-      <td className="p-5 text-right text-sm">
+<td className={`p-5 text-right text-sm ${
+  row._isDensityAnomaly ? "text-red-600 font-black" : ""
+}`}>
   {row._kgPerStick && row._kgPerStick > 0
     ? row._kgPerStick.toFixed(4)
     : "-"}
