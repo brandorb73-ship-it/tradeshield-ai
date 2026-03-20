@@ -641,23 +641,15 @@ AI Intelligence Summary
               </div>
           )}
 
-{/* TAB: SELF TRADE */}
 {activeTab === "self" && (() => {
-  let importsWeight = 0,
-    importsQty = 0,
-    importsAmt = 0;
-  let exportsWeight = 0,
-    exportsQty = 0,
-    exportsAmt = 0;
+  // ------------------------
+  // All your calculations:
+  let importsWeight = 0, importsQty = 0, importsAmt = 0;
+  let exportsWeight = 0, exportsQty = 0, exportsAmt = 0;
 
   const importCountries = new Set();
   const exportCountries = new Set();
   const brands = new Set();
-  const entityFraudMap = {};
-
-  // Prepare Sankey / Network data
-  const nodes = new Set();
-  const links = [];
 
   data.forEach(r => {
     if (r.Exporter === r.Importer) {
@@ -676,81 +668,48 @@ AI Intelligence Summary
       importCountries.add(r["Origin Country"]);
       exportCountries.add(r["Destination Country"]);
       brands.add(r.Brand);
-
-      const score =
-        (r._isSelf ? 0.3 : 0) +
-        (r._isHS ? 0.2 : 0) +
-        (r._isPrice ? 0.3 : 0) +
-        (r._isDensityAnomaly ? 0.3 : 0);
-
-      if (!entityFraudMap[r.Exporter]) entityFraudMap[r.Exporter] = 0;
-      entityFraudMap[r.Exporter] += score;
-
-      // Build Sankey/Network nodes & links
-      nodes.add(r.Exporter);
-      nodes.add(r.Importer);
-      links.push({
-        source: r.Exporter,
-        target: r.Importer,
-        value: w, // weight can be used as link thickness
-        fraudScore: score.toFixed(2)
-      });
     }
   });
 
   const mismatch = Math.abs(importsWeight - exportsWeight);
   const fraudScore = mismatch > 0 ? "HIGH RISK" : "CIRCULAR TRADE";
-  const densityAnomalies = data.filter(
-    r => r._isDensityAnomaly && r.Exporter === r.Importer
-  ).length;
 
-  const topEntities = Object.entries(entityFraudMap)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 3)
-    .map(([e, score]) => `${e} (${score.toFixed(2)})`);
-
-  const narrativeContent = `Detected ${data.filter(r => r._isSelf).length} circular trades. 
-Density anomalies: ${densityAnomalies}.
-Top risky entities: ${topEntities.join(", ")}.
-Brands involved: ${[...brands].slice(0, 5).join(", ")}.
-Countries involved: ${[...importCountries].slice(0, 5).join(", ")}`;
-
+  // ------------------------
+  // JSX return
   return (
-    <div className="bg-white p-6 rounded-xl shadow space-y-6">
-      <h2 className="text-2xl font-bold mb-4">Self Trade Intelligence</h2>
+    <div className="bg-white p-6 rounded-xl shadow">
+      <h2 className="text-2xl font-bold mb-6">Self Trade Intelligence</h2>
 
       <div className="grid grid-cols-2 gap-6">
         <div>
           <h3 className="font-bold">Imports</h3>
-          <div>Weight: {importsWeight.toFixed(2)} KG</div>
+          <div>Weight: {importsWeight.toFixed(2)}</div>
           <div>Quantity: {importsQty}</div>
           <div>Amount: ${importsAmt.toLocaleString()}</div>
           <div>Countries: {[...importCountries].join(", ")}</div>
         </div>
+
         <div>
           <h3 className="font-bold">Exports</h3>
-          <div>Weight: {exportsWeight.toFixed(2)} KG</div>
+          <div>Weight: {exportsWeight.toFixed(2)}</div>
           <div>Quantity: {exportsQty}</div>
           <div>Amount: ${exportsAmt.toLocaleString()}</div>
           <div>Countries: {[...exportCountries].join(", ")}</div>
         </div>
       </div>
 
-      <div className="mt-4">
+      <div className="mt-6">
         <h3 className="font-bold">Brands Involved</h3>
         <div className="text-sm">{[...brands].join(", ")}</div>
-      </div>
 
-      <div className="mt-4">
-        <h3 className="font-bold">Conclusion</h3>
+        <h3 className="font-bold mt-4">Conclusion</h3>
         <div className="text-sm text-slate-700">
-          Mismatch: {mismatch.toFixed(2)} KG <br />
-          Flag: <b>{fraudScore}</b> <br />
-          Weighted fraud score: <b>{Object.values(entityFraudMap).reduce((a,b)=>a+b,0).toFixed(2)}</b> <br />
-          Density anomalies detected: {densityAnomalies}
+          Mismatch: {mismatch.toFixed(2)} KG  
+          <br />
+          Flag: <b>{fraudScore}</b>  
           <br />
           Possible fraud:
-          <ul className="list-disc ml-6">
+          <ul className="list-disc ml-5">
             <li>Round-tripping</li>
             <li>VAT carousel layering</li>
             <li>Trade-based money laundering</li>
@@ -758,11 +717,10 @@ Countries involved: ${[...importCountries].slice(0, 5).join(", ")}`;
         </div>
       </div>
 
-      {/* AI Narrative Summary */}
       <AISummary
-        title="Circular Trade & Fraud Insight"
+        title="Circular Trade Insight"
         icon={ArrowLeftRight}
-        content={narrativeContent}
+        content={`Detected ${data.filter(d => d._isSelf).length} circular trades. Potential VAT carousel behavior.`}
       />
 
       {/* Sankey / Network Visualization */}
