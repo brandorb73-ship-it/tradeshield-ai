@@ -283,7 +283,7 @@ const analyzeFraud = (rawData) => {
     routeIntel: detectTradeCorridors(cleanedData)
   });
 
-setProcessedData(cleanedData);
+setData(cleanedData);
 
   // 1️⃣ Run external engines (NOW INSIDE THE FUNCTION)
   let intelLayer = {}, rings = [], cycles = [], shells = [], shellScores = {};
