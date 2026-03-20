@@ -417,7 +417,7 @@ CLEAR
 {activeTab === "audit" && (
   <div className="animate-in fade-in space-y-6">
     <div className="bg-white rounded-[2rem] shadow-2xl border-4 border-slate-900 overflow-hidden">
-      <table className="w-full text-left">
+      <table className="w-full text-left border-collapse">
         <thead className="bg-slate-900 text-white text-[10px] font-black uppercase">
           <tr>
             <th className="p-5">
@@ -461,7 +461,7 @@ CLEAR
             ].filter(Boolean).join('\n') || "No Risks Detected";
 
             return (
-              <tr key={i} className={`${row._isSelf ? 'bg-red-50' : 'hover:bg-slate-50'} border-b border-slate-100`}>
+              <tr key={i} className={`${row._isSelf ? 'bg-red-50' : 'hover:bg-slate-50'} border-b border-slate-100 transition-colors`}>
                 <td className="p-5">
                   <div 
                     className="text-sm font-black border-b border-dotted border-slate-400 inline-block cursor-help" 
@@ -469,37 +469,51 @@ CLEAR
                   >
                     {totalRisk.toFixed(2)}
                   </div>
-                  <div className="flex flex-wrap gap-1 mt-1">
-                    {row._isSelf && <span className="bg-red-700 text-white text-[8px] px-1.5 py-0.5 rounded">SELF</span>}
-                    {row._isHS && <span className="bg-orange-600 text-white text-[8px] px-1.5 py-0.5 rounded">HS</span>}
-                    {row._isPrice && <span className="bg-purple-700 text-white text-[8px] px-1.5 py-0.5 rounded">PRICE</span>}
-                    {row._isDensityAnomaly && <span className="bg-yellow-600 text-white text-[8px] px-1.5 py-0.5 rounded">DENSITY</span>}
+                  <div className="flex flex-col gap-1 mt-2">
+                    {row._isSelf && (
+                      <span className="bg-red-700 text-white text-[9px] px-2 py-1 rounded leading-tight uppercase">
+                        SELF: {row.Exporter}
+                      </span>
+                    )}
+                    <div className="flex gap-1">
+                      {row._isHS && <span className="bg-orange-600 text-white text-[8px] px-1.5 py-0.5 rounded">HS</span>}
+                      {row._isPrice && <span className="bg-purple-700 text-white text-[8px] px-1.5 py-0.5 rounded">PRICE</span>}
+                      {row._isDensityAnomaly && <span className="bg-yellow-600 text-white text-[8px] px-1.5 py-0.5 rounded">DENSITY</span>}
+                    </div>
                   </div>
                 </td>
-                <td className="p-5 text-xs text-slate-500">{row.Date}</td>
+
+                <td className="p-5 text-xs text-slate-500 font-bold">{row.Date}</td>
+
                 <td className="p-5">
                   <div className="text-sm font-black uppercase truncate max-w-[140px]">{row.Exporter}</div>
-                  <div className="text-[9px] text-blue-700 font-bold uppercase">To: {row.Importer}</div>
+                  <div className="text-[11px] text-blue-800 font-black uppercase mt-0.5 italic">To: {row.Importer}</div>
                 </td>
+
                 <td className="p-5">
                   <div className="text-sm font-black uppercase">{row.Brand}</div>
-                  <div className="text-[9px] text-slate-500 font-bold uppercase">HS: {row["HS Code"]}</div>
+                  <div className="text-[11px] text-slate-900 font-black mt-0.5">HS: {row["HS Code"]}</div>
                 </td>
+
                 <td className="p-5">
-                  <div className="text-[9px] font-black uppercase flex items-center gap-1">
-                    {row["Origin Country"]} <ArrowRight size={8}/> {row["Destination Country"]}
+                  <div className="text-[11px] font-black uppercase flex items-center gap-1 text-slate-700">
+                    {row["Origin Country"]} <ArrowRight size={10} strokeWidth={3}/> {row["Destination Country"]}
                   </div>
                 </td>
+
                 <td className="p-5 text-right font-black text-slate-900">
                   {row._numWeight?.toLocaleString()}
                 </td>
+
                 <td className="p-5 text-right font-black text-slate-900">
                   ${row._numAmount?.toLocaleString()}
                 </td>
+
                 <td className="p-5 text-right">
                   <div className="text-sm font-black text-slate-700">{row._numQty?.toLocaleString()}</div>
                   <div className="text-[8px] font-black text-blue-500 uppercase">{row["Quantity Unit"]}</div>
                 </td>
+
                 <td className="p-5 text-right text-xs font-mono">
                   {row["Quantity Unit"]?.toLowerCase().includes('stick') 
                     ? (row._numWeight / row._numQty).toFixed(4) 
@@ -509,9 +523,11 @@ CLEAR
             );
           })}
         </tbody>
-        <tfoot className="bg-slate-100 border-t-4 border-slate-900 font-black">
+        <tfoot className="bg-slate-100 border-t-4 border-slate-900 font-black text-slate-900">
           <tr>
-            <td colSpan="5" className="p-6 text-right text-lg uppercase">Total Volume:</td>
+            <td colSpan="5" className="p-6 text-right text-lg uppercase">
+              {activeFilter !== 'all' ? `${activeFilter} Total:` : 'Total Audit Volume:'}
+            </td>
             <td className="p-6 text-right text-xl">{visibleTotals.weight.toFixed(2)} KG</td>
             <td className="p-6 text-right text-2xl text-red-700">${visibleTotals.amount.toLocaleString()}</td>
             <td></td>
@@ -806,7 +822,6 @@ AI Intelligence Summary
 )}
 
           {/* TAB: MAP INTEL */}
-     {/* TAB: MAP INTEL */}
 {activeTab === "map" && (
   <div className="bg-slate-900 p-12 rounded-[4rem] text-white animate-in fade-in">
       <h2 className="text-3xl font-black uppercase mb-10 flex items-center gap-4">
