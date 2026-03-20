@@ -28,7 +28,6 @@ import { calculateShellScore } from "../analytics/shellProbability";
 import { detectTradeCorridors } from "../analytics/corridorHeatmap";
 import mlScore from "../analytics/mlAnomaly"; 
 import detectInvoiceMismatch from "../analytics/invoiceCheck";
-import { MapTab } from './components/Tabs/MapTab';
 import { HSTab } from './components/Tabs/HSTab';
 import { MassBalanceTab } from './components/Tabs/MassBalanceTab';
 
@@ -631,34 +630,10 @@ AI Intelligence Summary
   </div>
 )}
           
-          {/* TAB: MASS BALANCE */}
-          {activeTab === "mass" && (
-              <div className="bg-white p-12 rounded-[3rem] shadow-2xl border-4 border-slate-900 animate-in fade-in">
-                  <h2 className="text-3xl font-black uppercase mb-10 border-b-8 border-blue-600 w-fit">In-Out Weight Reconciliation</h2>
-                  <div className="space-y-6">
-                    {Object.entries(stats.massBalance).map(([entity, brands]) => (
-                        Object.entries(brands).map(([brand, w]) => {
-                            if (w.exp > 0 && w.imp > 0) {
-                                return (
-                                    <div key={entity+brand} className="p-8 bg-slate-50 rounded-[2rem] border-2 border-slate-200 flex justify-between items-center">
-                                        <div className="text-3xl font-black uppercase text-slate-900">{entity}</div>
-                                        <div className="flex gap-10">
-                                            <div className="text-right">
-                                                <div className="text-xs font-black text-slate-700 uppercase">Brand Flow: {brand}</div>
-                                                <div className="text-xl font-bold">Imp: {w.imp.toFixed(1)}kg | Exp: {w.exp.toFixed(1)}kg</div>
-                                            </div>
-                                            <div className="bg-blue-600 text-white px-6 py-4 rounded-2xl font-black text-2xl">{(w.exp/w.imp*100).toFixed(0)}% MATCH</div>
-                                        </div>
-                                    </div>
-                                )
-                            }
-                            return null;
-                        })
-                    ))}
-                  </div>
-                
-              </div>
-          )}
+         {/* TAB: MASS BALANCE */}
+{activeTab === "mass" && (
+  <MassBalanceTab stats={stats} /> 
+)}
 
 {activeTab === "self" && (
   <div className="animate-in fade-in space-y-8">
@@ -877,34 +852,13 @@ VIEW AUDIT TRAIL <ArrowRight size={16} strokeWidth={3}/>
 />
   </div>
 )}
-          {/* TAB: HS INTEL (AGGREGATED) */}
-          {activeTab === "hs" && (
-              <div className="bg-white p-12 rounded-[3rem] shadow-2xl border-4 border-slate-900 animate-in fade-in">
-                  <h2 className="text-3xl font-black uppercase mb-10">Aggregated Shipment Intelligence</h2>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {Object.values(stats.hsAgg).map((item, i) => (
-                          <div key={i} className="p-8 bg-slate-50 border-2 border-slate-200 rounded-3xl">
-                              <div className="flex justify-between items-start mb-4">
-                                  <div>
-                                      <div className="text-base font-black uppercase text-slate-900">{item.entity}</div>
-                                      <div className="text-xs font-black text-blue-600 uppercase">Brand: {item.brand}</div>
-                                  </div>
-                                  <div className="bg-slate-900 text-white px-4 py-1 rounded-lg text-xs font-black">HS: {item.hs}</div>
-                              </div>
-                              <div className="flex justify-between font-black text-slate-800 border-t pt-4">
-                                  <span>{item.count} SHIPMENTS</span>
-                                  <span className="text-blue-700">${item.amount.toLocaleString()}</span>
-                              </div>
-                          </div>
-                      ))}
-                  </div>
-                    <AISummary
-      title="HS Intelligence Insight"
-      icon={BookOpen}
-      content={`Detected ${Object.keys(stats.hsAgg || {}).length} aggregated HS clusters across entities.`}
-    />
-              </div>
-          )}
+         {/* TAB: HS INTEL */}
+{activeTab === "hs" && (
+  <HSTab 
+    stats={stats} 
+    AISummary={AISummary} // Passing the AI summary component as a prop
+  />
+)}
 
 {activeTab === "fraud" && (
   <div>
