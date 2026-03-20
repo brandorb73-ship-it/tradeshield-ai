@@ -41,15 +41,17 @@ const [activeFilter, setActiveFilter] = useState("all");
 const entityERS = useMemo(() => {
   if (!stats.entityStats) return [];
   return Object.entries(stats.entityStats).map(([name, s]) => {
+    // FIXED: Removed the floating "(" and combined the math correctly
     const raw =
-(s.self * 20) +
-(s.hs * 15) +
-(s.price * 20) +
-(s.density * 30)
-  (s.mlRisk * 20) +
-  (s.shellRisk * 30) +
-  (s.ringScore * 40) +
-  (s.cycleScore * 35);
+      (s.self * 20) +
+      (s.hs * 15) +
+      (s.price * 20) +
+      (s.density * 30) +
+      (s.mlRisk * 20) +
+      (s.shellRisk * 30) +
+      (s.ringScore * 40) +
+      (s.cycleScore * 35);
+      
     const final = Math.min(100, (raw / s.total) + (s.total > 10 ? 10 : 0));
     return { name, ...s, finalScore: final.toFixed(1) };
   }).sort((a, b) => b.finalScore - a.finalScore);
@@ -177,8 +179,6 @@ const analyzeFraud = (rawData) => {
     else amountBuckets.large++;
 
     // Initialize entity stats
-const entityStats = {};
-data.forEach(row => {
   const exp = row.Exporter || "Unknown";
   const imp = row.Importer || "Unknown";
 
