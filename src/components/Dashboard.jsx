@@ -157,7 +157,7 @@ const analyzeFraud = (rawData) => {
     return isNaN(n) ? 0 : n;
   };
 
-  // 1️⃣ Preprocess & normalize
+  // 1. Preprocess & normalize
   const cleanedData = rawData.map((r) => {
     const row = {};
     Object.keys(r).forEach((k) => {
@@ -193,78 +193,65 @@ const analyzeFraud = (rawData) => {
       _pricePerKg: pricePerKg,
       _kgPerStick: kgPerStick,
       _isDensityAnomaly: isDensityAnomaly,
-      _isSelf: row["Exporter"] === row["Importer"],
+      _isSelf: (row["Exporter"] === row["Importer"] && row["Exporter"] !== "UNKNOWN"),
     };
   });
 
-  // 2️⃣ Initialize aggregates (ADDED FIXES HERE)
+  // 2. Initialize aggregates
   const entityStats = {};
   const brandToHS = {};
   const brandTotals = {};
-  const selfTradeData = {}; // NEW: For the Self Trade Tab
-  let totalWeight = 0;      // NEW: For the $0 Fix
-  let totalAmt = 0;         // NEW: For the $0 Fix
-  let totalCircularVolume = 0; // NEW: For the Self Trade Summary
+  const selfTradeData = {}; 
+  let totalWeight = 0;      
+  let totalAmt = 0;         
+  let totalCircularVolume = 0; 
 
-  // --- 1. PRE-CALCULATE BRAND MEDIANS & TOTALS ---
+  // --- PASS 1: BRAND BASES & GLOBAL TOTALS ---
   cleanedData.forEach(r => {
     const brand = r.Brand || "UNKNOWN";
     
-    // SAFE PARSING
-    r._numWeight = parseFloat(r["Weight(Kg)"]?.toString().replace(/[^\d.-]/g, "")) || 0;
-    r._numAmount = parseFloat(r["Amount($)"]?.toString().replace(/[^\d.-]/g, "")) || 0;
-    r._numQty = parseFloat(r["Quantity"]?.toString().replace(/[^\d.-]/g, "")) || 0;
+    // Financial Accumulation (Fixes $0 issue)
+    totalAmt += r["Amount($)"];
+    totalWeight += r["Weight(Kg)"];
 
     if (!brandTotals[brand]) brandTotals[brand] = { weight: 0, amount: 0 };
-    brandTotals[brand].weight += r._numWeight;
-    brandTotals[brand].amount += r._numAmount;
-
-    // FIX: Accumulate Global Totals for ERS Narrative
-    totalAmt += r._numAmount;
-    totalWeight += r._numWeight;
+    brandTotals[brand].weight += r["Weight(Kg)"];
+    brandTotals[brand].amount += r["Amount($)"];
   });
 
-  const brandBaselines = {}; // Map will use this
+  const brandBaselines = {}; 
   Object.keys(brandTotals).forEach(b => {
     brandBaselines[b] = brandTotals[b].weight > 0 ? brandTotals[b].amount / brandTotals[b].weight : 0;
   });
 
-  // --- 2. MAIN FORENSIC LOOP ---
+  // --- PASS 2: FORENSIC ATTRIBUTION ---
   cleanedData.forEach(r => {
-    const exp = r.Exporter || "UNKNOWN";
-    const imp = r.Importer || "UNKNOWN";
-    const brand = r.Brand || "UNKNOWN";
-    const hs = r["HS Code"] || "UNKNOWN";
-    const unit = (r["Quantity Unit"] || "").toLowerCase();
+    const exp = r.Exporter;
+    const imp = r.Importer;
+    const brand = r.Brand;
+    const hs = r["HS Code"];
 
-    // A. Density Anomaly Logic
-    if (unit.includes("stick") && r._numQty > 0) {
-      const density = r._numWeight / r._numQty;
-      if (density < 0.0007 || density > 0.0013) r._isDensityAnomaly = true;
-    }
-
-    // B. Price Anomaly Logic
-    const unitPrice = r._numWeight > 0 ? r._numAmount / r._numWeight : 0;
+    // A. Price Logic
+    const unitPrice = r._pricePerKg;
     const median = brandBaselines[brand] || 0;
     r._isPrice = median > 0 && (unitPrice > median * 1.3 || unitPrice < median * 0.7);
 
-    // C. HS Mismatch Logic
+    // B. HS Mismatch Logic
     if (!brandToHS[brand]) brandToHS[brand] = hs;
     r._isHS = brandToHS[brand] !== hs;
 
-    // D. Self-Trade Logic (FIX: POPULATE THE NEW TAB DATA)
-    r._isSelf = (exp === imp && exp !== "UNKNOWN");
+    // C. Self-Trade Accumulation (For the new Tab)
     if (r._isSelf) {
       if (!selfTradeData[exp]) {
         selfTradeData[exp] = { amount: 0, weight: 0, count: 0 };
       }
-      selfTradeData[exp].amount += r._numAmount;
-      selfTradeData[exp].weight += r._numWeight;
+      selfTradeData[exp].amount += r["Amount($)"];
+      selfTradeData[exp].weight += r["Weight(Kg)"];
       selfTradeData[exp].count += 1;
-      totalCircularVolume += r._numAmount;
+      totalCircularVolume += r["Amount($)"];
     }
 
-    // E. Entity Risk Attribution
+    // D. Entity Statistics
     [exp, imp].forEach(e => {
       if (!entityStats[e]) {
         entityStats[e] = { 
@@ -279,32 +266,26 @@ const analyzeFraud = (rawData) => {
     entityStats[exp].transactions += 1;
     entityStats[imp].transactions += 1;
 
-    if (r._isPrice) {
-      entityStats[exp].priceAnomaly += 1;
-      entityStats[imp].priceAnomaly += 1;
-    }
-    if (r._isSelf) entityStats[exp].self += 1;
-    if (r._isHS) {
-      entityStats[exp].hs += 1;
-      entityStats[imp].hs += 1;
-    }
-    if (r._isDensityAnomaly) {
-      entityStats[exp].density += 1;
-      entityStats[imp].density += 1;
-    }
+    if (r._isPrice) { entityStats[exp].priceAnomaly += 1; entityStats[imp].priceAnomaly += 1; }
+    if (r._isSelf) { entityStats[exp].self += 1; }
+    if (r._isHS) { entityStats[exp].hs += 1; entityStats[imp].hs += 1; }
+    if (r._isDensityAnomaly) { entityStats[exp].density += 1; entityStats[imp].density += 1; }
   });
 
-  // 3️⃣ FINISH: Update State
+  // 3. Update State (ENSURE THIS IS CLOSED)
   setStats({
-    totalAmt: totalAmt,             // Fixes the $0 narrative
-    totalWeight: totalWeight,       // Fixes the 0 KG narrative
-    totalCircularVolume: totalCircularVolume, // Feeds Self Trade Tab Header
-    selfTradeData: selfTradeData,   // Feeds the Self Trade breakdown cards
-    brandBaselines: brandBaselines, // Use this for the Map to fix ReferenceError
+    totalAmt: totalAmt, 
+    totalWeight: totalWeight,
+    totalCircularVolume: totalCircularVolume,
+    selfTradeData: selfTradeData,
+    brandBaselines: brandBaselines,
     entityStats: entityStats,
-    routeIntel: processRouteIntel(cleanedData) // Helper for your Map Corridor logic
+    routeIntel: processRouteIntel(cleanedData)
   });
-};
+
+  setProcessedData(cleanedData);
+}; // <--- THIS BRACE CLOSES analyzeFraud
+  
   // ✅ Run external engines AFTER all flags
   let intelLayer = {}, rings = [], cycles = [], shells = [], shellScores = {}, corridors = [], anomalies = [];
   let tobaccoSignals = [], uTurnEntities = [], vatEntities = [], phantomEntities = [], priceEntities = [], mlScores = {}, fraudProb = 0;
