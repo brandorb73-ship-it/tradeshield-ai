@@ -694,7 +694,6 @@ Possible fraud:
 
 );
 
-})()}
 
           {/* TAB: FINANCIAL FORENSICS */}
 {activeTab === "finance" && (
