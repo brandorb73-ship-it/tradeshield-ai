@@ -136,7 +136,7 @@ const analyzeFraud = (rawData) => {
   });
 
   const weight = parseFloat(row["Weight(Kg)"]) || 0;
-  const amount = parseFloat(row["Amount($)"]) || 0;
+  const amount = parseFloat(row["Amount($)"].toString().replace(/,/g, "")) || 0;
   const declaredPrice = parseFloat(row["Unit Price($)"]) || 0;
   const effPrice = declaredPrice > 0 ? declaredPrice : weight > 0 ? amount / weight : 0;
 
@@ -634,94 +634,74 @@ AI Intelligence Summary
           )}
 
 {activeTab === "self" && (() => {
-  // ------------------------
-  // All your calculations:
-  let importsWeight = 0, importsQty = 0, importsAmt = 0;
-  let exportsWeight = 0, exportsQty = 0, exportsAmt = 0;
+  let selfWeight = 0, selfQty = 0, selfAmt = 0;
+  const selfCountries = new Set();
+  const selfBrands = new Set();
+  const selfTrades = data.filter(d => d._isSelf);
 
-  const importCountries = new Set();
-  const exportCountries = new Set();
-  const brands = new Set();
-
-  data.forEach(r => {
-    if (r.Exporter === r.Importer) {
-      const w = parseFloat(r["Weight(Kg)"] || 0);
-      const q = parseFloat(r["Quantity"] || 0);
-      const a = parseFloat(r["Amount($)"] || 0);
-
-      importsWeight += w;
-      importsQty += q;
-      importsAmt += a;
-
-      exportsWeight += w;
-      exportsQty += q;
-      exportsAmt += a;
-
-      importCountries.add(r["Origin Country"]);
-      exportCountries.add(r["Destination Country"]);
-      brands.add(r.Brand);
-    }
+  selfTrades.forEach(r => {
+    selfWeight += parseFloat(r["Weight(Kg)"] || 0);
+    selfQty += parseFloat(r["Quantity"] || 0);
+    selfAmt += parseFloat(r["Amount($)"] || 0);
+    selfCountries.add(r["Origin Country"]);
+    selfCountries.add(r["Destination Country"]);
+    selfBrands.add(r.Brand);
   });
 
-  const mismatch = Math.abs(importsWeight - exportsWeight);
-  const fraudScore = mismatch > 0 ? "HIGH RISK" : "CIRCULAR TRADE";
-
-  // ------------------------
-  // JSX return
   return (
-    <div className="bg-white p-6 rounded-xl shadow">
-      <h2 className="text-2xl font-bold mb-6">Self Trade Intelligence</h2>
-
-      <div className="grid grid-cols-2 gap-6">
-        <div>
-          <h3 className="font-bold">Imports</h3>
-          <div>Weight: {importsWeight.toFixed(2)}</div>
-          <div>Quantity: {importsQty}</div>
-          <div>Amount: ${importsAmt.toLocaleString()}</div>
-          <div>Countries: {[...importCountries].join(", ")}</div>
+    <div className="animate-in fade-in space-y-6">
+      <div className="bg-white p-8 rounded-[2rem] shadow-2xl border-4 border-slate-900">
+        <div className="flex items-center gap-4 mb-8">
+          <div className="bg-red-100 p-4 rounded-2xl">
+            <ArrowLeftRight className="text-red-600" size={32} />
+          </div>
+          <div>
+            <h2 className="text-3xl font-black uppercase tracking-tighter">Self-Trade Intelligence</h2>
+            <p className="text-slate-500 font-bold">Exporter and Importer are the same legal entity</p>
+          </div>
         </div>
 
-        <div>
-          <h3 className="font-bold">Exports</h3>
-          <div>Weight: {exportsWeight.toFixed(2)}</div>
-          <div>Quantity: {exportsQty}</div>
-          <div>Amount: ${exportsAmt.toLocaleString()}</div>
-          <div>Countries: {[...exportCountries].join(", ")}</div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <div className="bg-slate-50 p-6 rounded-2xl border-2 border-slate-100">
+            <div className="text-slate-500 text-xs font-black uppercase mb-1">Total Circular Volume</div>
+            <div className="text-2xl font-black">{selfWeight.toFixed(2)} KG</div>
+          </div>
+          <div className="bg-slate-50 p-6 rounded-2xl border-2 border-slate-100">
+            <div className="text-slate-500 text-xs font-black uppercase mb-1">Total Circular Value</div>
+            <div className="text-2xl font-black text-red-600">${selfAmt.toLocaleString()}</div>
+          </div>
+          <div className="bg-slate-50 p-6 rounded-2xl border-2 border-slate-100">
+            <div className="text-slate-500 text-xs font-black uppercase mb-1">Incidents</div>
+            <div className="text-2xl font-black">{selfTrades.length} Rows</div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <div className="space-y-4">
+            <h3 className="font-black uppercase text-sm text-blue-600">Risk Analysis</h3>
+            <div className="p-6 bg-red-50 border-2 border-red-100 rounded-2xl">
+              <div className="font-black text-red-800 mb-2">CRITICAL: CIRCULAR TRADE DETECTED</div>
+              <p className="text-sm text-red-700 leading-relaxed">
+                Entities are shipping goods to themselves. This is a primary indicator of 
+                <strong> VAT Carousel Fraud</strong> or <strong>Trade-Based Money Laundering</strong> 
+                to artificially inflate company turnover.
+              </p>
+            </div>
+          </div>
+          
+          <div className="space-y-4">
+            <h3 className="font-black uppercase text-sm text-blue-600">Network Footprint</h3>
+            <div className="flex flex-wrap gap-2">
+              {[...selfCountries].map(c => (
+                <span key={c} className="bg-slate-900 text-white text-[10px] px-3 py-1 rounded-full font-bold">{c}</span>
+              ))}
+            </div>
+            <div className="text-sm font-bold text-slate-700 mt-4">
+              Brands: <span className="text-slate-500">{[...selfBrands].join(", ")}</span>
+            </div>
+          </div>
         </div>
       </div>
-
-      <div className="mt-6">
-        <h3 className="font-bold">Brands Involved</h3>
-        <div className="text-sm">{[...brands].join(", ")}</div>
-
-        <h3 className="font-bold mt-4">Conclusion</h3>
-        <div className="text-sm text-slate-700">
-          Mismatch: {mismatch.toFixed(2)} KG  
-          <br />
-          Flag: <b>{fraudScore}</b>  
-          <br />
-          Possible fraud:
-          <ul className="list-disc ml-5">
-            <li>Round-tripping</li>
-            <li>VAT carousel layering</li>
-            <li>Trade-based money laundering</li>
-          </ul>
-        </div>
-      </div>
-
-      <AISummary
-        title="Circular Trade Insight"
-        icon={ArrowLeftRight}
-        content={`Detected ${data.filter(d => d._isSelf).length} circular trades. Potential VAT carousel behavior.`}
-      />
-
-      {/* Sankey / Network Visualization */}
-      {links.length > 0 && (
-        <div className="mt-6">
-          <h3 className="font-bold mb-2">Self Trade Network Visualization</h3>
-          <NetworkGraph nodes={[...nodes]} links={links} />
-        </div>
-      )}
     </div>
   );
 })()}
