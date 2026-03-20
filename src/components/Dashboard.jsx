@@ -84,6 +84,14 @@ const [fraudStats, setFraudStats] = useState({
 const fin = useMemo(() => {
   return financialAnalysis(data);
 }, [data]);
+const tradeLinks = useMemo(() => {
+  if (!data || data.length === 0) return [];
+  return data.map(d => ({
+    source: d.Exporter,
+    target: d.Importer,
+    value: d["Amount($)"]
+  }));
+}, [data]);
  const narrative = useMemo(() => {
   return generateNarrative(stats, fraudStats);
 }, [stats, fraudStats]);
