@@ -307,7 +307,46 @@ const analyzeFraud = (rawData) => {
     if (mlScores[e]) entityStats[e].mlRisk = mlScores[e];
     if (rings.find(r => r?.includes?.(e))) entityStats[e].ringScore = (entityStats[e].ringScore || 0) + 1;
   });
+// --- NEW: HS INTEL AGGREGATION ---
+const hsAgg = {};
+cleanedData.forEach(r => {
+  // Create a unique key for Entity + HS + Brand combo
+  const hsKey = `${r.Exporter}-${r["HS Code"]}-${r.Brand}`;
+  if (!hsAgg[hsKey]) {
+    hsAgg[hsKey] = { 
+      entity: r.Exporter, 
+      hs: r["HS Code"], 
+      brand: r.Brand, 
+      count: 0, 
+      amount: 0 
+    };
+  }
+  hsAgg[hsKey].count++;
+  hsAgg[hsKey].amount += r["Amount($)"];
+});
 
+// --- NEW: MASS BALANCE CALCULATION ---
+const massBalance = {};
+cleanedData.forEach(r => {
+  const exp = r.Exporter;
+  const imp = r.Importer;
+  const brand = r.Brand;
+  const weight = r["Weight(Kg)"] || 0;
+
+  // Track Outbound (Export)
+  if (exp !== "UNKNOWN") {
+    if (!massBalance[exp]) massBalance[exp] = {};
+    if (!massBalance[exp][brand]) massBalance[exp][brand] = { imp: 0, exp: 0 };
+    massBalance[exp][brand].exp += weight;
+  }
+
+  // Track Inbound (Import)
+  if (imp !== "UNKNOWN") {
+    if (!massBalance[imp]) massBalance[imp] = {};
+    if (!massBalance[imp][brand]) massBalance[imp][brand] = { imp: 0, exp: 0 };
+    massBalance[imp][brand].imp += weight;
+  }
+});
  // --- FINAL STATE SYNC ---
   
   // 1. Convert Sets to Arrays so the UI doesn't crash
@@ -333,8 +372,8 @@ setStats({
     entityStats: entityStats || {}, // Ensure this is never null
     routeIntel: corridors || {},   // Fallback for Map tab
     brandBaselines: brandBaselines || {},
-    hsAgg: hsAgg || {},           // Fallback for HS tab
-    massBalanceData: intelLayer?.massBalance || {}, // <--- FIX FOR GREY SCREEN
+hsAgg: hsAgg || {},           
+  massBalance: massBalance || {},
     rings: rings || [],
     cycles: cycles || [],
     fraudProbability: fraudProb || 0
