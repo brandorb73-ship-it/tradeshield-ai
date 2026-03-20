@@ -28,7 +28,6 @@ import { calculateShellScore } from "../analytics/shellProbability";
 import { detectTradeCorridors } from "../analytics/corridorHeatmap";
 import mlScore from "../analytics/mlAnomaly"; 
 import detectInvoiceMismatch from "../analytics/invoiceCheck"; 
-import generateNarrative from "../analytics/aiNarrative";
 
 const generateNarrative = (stats, fraudStats, entityERS) => {
   if (!stats || !entityERS) return "Awaiting trade data for forensic analysis...";
