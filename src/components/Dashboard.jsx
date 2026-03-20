@@ -158,140 +158,153 @@ const analyzeFraud = (rawData) => {
   };
 
   // 1️⃣ Preprocess & normalize
- const cleanedData = rawData.map((r) => {
-  const row = {};
-  Object.keys(r).forEach((k) => {
-    const key = k.trim();
-    row[key] = typeof r[k] === "string" ? r[k].trim() : r[k];
+  const cleanedData = rawData.map((r) => {
+    const row = {};
+    Object.keys(r).forEach((k) => {
+      const key = k.trim();
+      row[key] = typeof r[k] === "string" ? r[k].trim() : r[k];
+    });
+
+    const weight = parseFloat(row["Weight(Kg)"]?.toString().replace(/,/g, "")) || 0;
+    const amount = parseFloat(row["Amount($)"]?.toString().replace(/,/g, "")) || 0;
+    const pricePerKg = weight > 0 ? amount / weight : 0;
+    const rawQty = parseFloat(row["Quantity"]?.toString().replace(/,/g, "")) || 0;
+    const unit = (row["Quantity Unit"] || "").toUpperCase();
+    
+    let kgPerStick = 0;
+    let isDensityAnomaly = false;
+    const isStickUnit = unit.includes("STICK") || unit.includes("PCS") || unit.includes("PC");
+    const isPackUnit = unit.includes("PACK");
+
+    if (rawQty > 0 && (isStickUnit || isPackUnit)) {
+        const totalSticks = isPackUnit ? rawQty * 20 : rawQty;
+        kgPerStick = weight / totalSticks;
+        isDensityAnomaly = kgPerStick > 0.0011 || kgPerStick < 0.0006;
+    }
+
+    return {
+      ...row,
+      Exporter: row["Exporter"] || "UNKNOWN",
+      Importer: row["Importer"] || "UNKNOWN",
+      Brand: row["Brand"] || "UNKNOWN",
+      "HS Code": row["HS Code"] || "UNKNOWN",
+      "Amount($)": amount,
+      "Weight(Kg)": weight,
+      _pricePerKg: pricePerKg,
+      _kgPerStick: kgPerStick,
+      _isDensityAnomaly: isDensityAnomaly,
+      _isSelf: row["Exporter"] === row["Importer"],
+    };
   });
 
-  // 1. Master Financials (Strips commas for safety)
-  const weight = parseFloat(row["Weight(Kg)"]?.toString().replace(/,/g, "")) || 0;
-  const amount = parseFloat(row["Amount($)"]?.toString().replace(/,/g, "")) || 0;
-  const pricePerKg = weight > 0 ? amount / weight : 0;
-
-  // 2. Quantity Normalization
-  const rawQty = parseFloat(row["Quantity"]?.toString().replace(/,/g, "")) || 0;
-  const unit = (row["Quantity Unit"] || "").toUpperCase();
-  
-  let kgPerStick = 0;
-  let isDensityAnomaly = false;
-
-  // 3. Conditional Density Check (Only if units are Sticks/Packs)
-  const isStickUnit = unit.includes("STICK") || unit.includes("PCS") || unit.includes("PC");
-  const isPackUnit = unit.includes("PACK");
-
-  if (rawQty > 0 && (isStickUnit || isPackUnit)) {
-      const totalSticks = isPackUnit ? rawQty * 20 : rawQty;
-      kgPerStick = weight / totalSticks;
-      // Flag if 1 stick is heavier than 1.1g or lighter than 0.6g
-      isDensityAnomaly = kgPerStick > 0.0011 || kgPerStick < 0.0006;
-  }
-
-  return {
-    ...row, // Keeps original fields
-    Exporter: row["Exporter"] || "UNKNOWN",
-    Importer: row["Importer"] || "UNKNOWN",
-    Brand: row["Brand"] || "UNKNOWN",
-    "HS Code": row["HS Code"] || "UNKNOWN",
-    "Amount($)": amount,
-    "Weight(Kg)": weight,
-    _pricePerKg: pricePerKg,
-    _kgPerStick: kgPerStick,
-    _isDensityAnomaly: isDensityAnomaly,
-    _isSelf: row["Exporter"] === row["Importer"],
-    // Note: _isHS and _isPrice are calculated later in your loop
-  };
-});
-
-  // 2️⃣ Initialize aggregates
+  // 2️⃣ Initialize aggregates (ADDED FIXES HERE)
   const entityStats = {};
-  const hsAgg = {};
-  const massBalance = {};
-  const selfAgg = {};
-  const routeIntel = {};
-  const brandPrices = {};
   const brandToHS = {};
-  const amountBuckets = { small: 0, medium: 0, large: 0 };
-  let totalWeight = 0;
-  let totalAmt = 0;
+  const brandTotals = {};
+  const selfTradeData = {}; // NEW: For the Self Trade Tab
+  let totalWeight = 0;      // NEW: For the $0 Fix
+  let totalAmt = 0;         // NEW: For the $0 Fix
+  let totalCircularVolume = 0; // NEW: For the Self Trade Summary
 
-// --- 1. PRE-CALCULATE BRAND MEDIANS ---
-const brandMedians = {};
-const brandTotals = {};
+  // --- 1. PRE-CALCULATE BRAND MEDIANS & TOTALS ---
+  cleanedData.forEach(r => {
+    const brand = r.Brand || "UNKNOWN";
+    
+    // SAFE PARSING
+    r._numWeight = parseFloat(r["Weight(Kg)"]?.toString().replace(/[^\d.-]/g, "")) || 0;
+    r._numAmount = parseFloat(r["Amount($)"]?.toString().replace(/[^\d.-]/g, "")) || 0;
+    r._numQty = parseFloat(r["Quantity"]?.toString().replace(/[^\d.-]/g, "")) || 0;
 
-cleanedData.forEach(r => {
-  const brand = r.Brand || "UNKNOWN";
-  // Clean values once here so the UI doesn't have to do it later
-  r._numWeight = parseFloat(r["Weight(Kg)"]?.toString().replace(/[^\d.-]/g, "")) || 0;
-  r._numAmount = parseFloat(r["Amount($)"]?.toString().replace(/[^\d.-]/g, "")) || 0;
-  r._numQty = parseFloat(r["Quantity"]?.toString().replace(/[^\d.-]/g, "")) || 0;
+    if (!brandTotals[brand]) brandTotals[brand] = { weight: 0, amount: 0 };
+    brandTotals[brand].weight += r._numWeight;
+    brandTotals[brand].amount += r._numAmount;
 
-  if (!brandTotals[brand]) brandTotals[brand] = { weight: 0, amount: 0 };
-  brandTotals[brand].weight += r._numWeight;
-  brandTotals[brand].amount += r._numAmount;
-});
+    // FIX: Accumulate Global Totals for ERS Narrative
+    totalAmt += r._numAmount;
+    totalWeight += r._numWeight;
+  });
 
-Object.keys(brandTotals).forEach(b => {
-  brandMedians[b] = brandTotals[b].weight > 0 ? brandTotals[b].amount / brandTotals[b].weight : 0;
-});
+  const brandBaselines = {}; // Map will use this
+  Object.keys(brandTotals).forEach(b => {
+    brandBaselines[b] = brandTotals[b].weight > 0 ? brandTotals[b].amount / brandTotals[b].weight : 0;
+  });
 
-// --- 2. MAIN FORENSIC LOOP ---
-cleanedData.forEach(r => {
-  const exp = r.Exporter || "UNKNOWN";
-  const imp = r.Importer || "UNKNOWN";
-  const brand = r.Brand || "UNKNOWN";
-  const hs = r["HS Code"] || "UNKNOWN";
-  const unit = (r["Quantity Unit"] || "").toLowerCase();
+  // --- 2. MAIN FORENSIC LOOP ---
+  cleanedData.forEach(r => {
+    const exp = r.Exporter || "UNKNOWN";
+    const imp = r.Importer || "UNKNOWN";
+    const brand = r.Brand || "UNKNOWN";
+    const hs = r["HS Code"] || "UNKNOWN";
+    const unit = (r["Quantity Unit"] || "").toLowerCase();
 
-  // A. Density Anomaly Logic
-  r._isDensityAnomaly = false;
-  if (unit.includes("stick") && r._numQty > 0) {
-    const density = r._numWeight / r._numQty;
-    if (density < 0.0007 || density > 0.0013) r._isDensityAnomaly = true;
-  }
+    // A. Density Anomaly Logic
+    if (unit.includes("stick") && r._numQty > 0) {
+      const density = r._numWeight / r._numQty;
+      if (density < 0.0007 || density > 0.0013) r._isDensityAnomaly = true;
+    }
 
-  // B. Price Anomaly Logic
-  const unitPrice = r._numWeight > 0 ? r._numAmount / r._numWeight : 0;
-  const median = brandMedians[brand] || 0;
-  r._isPrice = median > 0 && (unitPrice > median * 1.3 || unitPrice < median * 0.7);
+    // B. Price Anomaly Logic
+    const unitPrice = r._numWeight > 0 ? r._numAmount / r._numWeight : 0;
+    const median = brandBaselines[brand] || 0;
+    r._isPrice = median > 0 && (unitPrice > median * 1.3 || unitPrice < median * 0.7);
 
-  // C. HS Mismatch Logic
-  if (!brandToHS[brand]) brandToHS[brand] = hs;
-  r._isHS = brandToHS[brand] !== hs;
+    // C. HS Mismatch Logic
+    if (!brandToHS[brand]) brandToHS[brand] = hs;
+    r._isHS = brandToHS[brand] !== hs;
 
-  // D. Self-Trade Logic
-  r._isSelf = (exp === imp);
+    // D. Self-Trade Logic (FIX: POPULATE THE NEW TAB DATA)
+    r._isSelf = (exp === imp && exp !== "UNKNOWN");
+    if (r._isSelf) {
+      if (!selfTradeData[exp]) {
+        selfTradeData[exp] = { amount: 0, weight: 0, count: 0 };
+      }
+      selfTradeData[exp].amount += r._numAmount;
+      selfTradeData[exp].weight += r._numWeight;
+      selfTradeData[exp].count += 1;
+      totalCircularVolume += r._numAmount;
+    }
 
-  // E. Entity Risk Attribution (Counterparty Logic)
-  [exp, imp].forEach(e => {
-    if (!entityStats[e]) {
-      entityStats[e] = { 
-        self: 0, hs: 0, price: 0, density: 0, transactions: 0, priceAnomaly: 0,
-        isExporter: false, isImporter: false 
-      };
+    // E. Entity Risk Attribution
+    [exp, imp].forEach(e => {
+      if (!entityStats[e]) {
+        entityStats[e] = { 
+          self: 0, hs: 0, price: 0, density: 0, transactions: 0, priceAnomaly: 0,
+          isExporter: false, isImporter: false 
+        };
+      }
+    });
+
+    entityStats[exp].isExporter = true;
+    entityStats[imp].isImporter = true;
+    entityStats[exp].transactions += 1;
+    entityStats[imp].transactions += 1;
+
+    if (r._isPrice) {
+      entityStats[exp].priceAnomaly += 1;
+      entityStats[imp].priceAnomaly += 1;
+    }
+    if (r._isSelf) entityStats[exp].self += 1;
+    if (r._isHS) {
+      entityStats[exp].hs += 1;
+      entityStats[imp].hs += 1;
+    }
+    if (r._isDensityAnomaly) {
+      entityStats[exp].density += 1;
+      entityStats[imp].density += 1;
     }
   });
 
-  entityStats[exp].isExporter = true;
-  entityStats[imp].isImporter = true;
-  entityStats[exp].transactions += 1;
-  entityStats[imp].transactions += 1;
-
-  if (r._isPrice) {
-    entityStats[exp].priceAnomaly += 1;
-    entityStats[imp].priceAnomaly += 1;
-  }
-  if (r._isSelf) entityStats[exp].self += 1;
-  if (r._isHS) {
-    entityStats[exp].hs += 1;
-    entityStats[imp].hs += 1;
-  }
-  if (r._isDensityAnomaly) {
-    entityStats[exp].density += 1;
-    entityStats[imp].density += 1;
-  }
-});
+  // 3️⃣ FINISH: Update State
+  setStats({
+    totalAmt: totalAmt,             // Fixes the $0 narrative
+    totalWeight: totalWeight,       // Fixes the 0 KG narrative
+    totalCircularVolume: totalCircularVolume, // Feeds Self Trade Tab Header
+    selfTradeData: selfTradeData,   // Feeds the Self Trade breakdown cards
+    brandBaselines: brandBaselines, // Use this for the Map to fix ReferenceError
+    entityStats: entityStats,
+    routeIntel: processRouteIntel(cleanedData) // Helper for your Map Corridor logic
+  });
+};
   // ✅ Run external engines AFTER all flags
   let intelLayer = {}, rings = [], cycles = [], shells = [], shellScores = {}, corridors = [], anomalies = [];
   let tobaccoSignals = [], uTurnEntities = [], vatEntities = [], phantomEntities = [], priceEntities = [], mlScores = {}, fraudProb = 0;
@@ -655,78 +668,89 @@ AI Intelligence Summary
               </div>
           )}
 
-{activeTab === "self" && (() => {
-  let selfWeight = 0, selfQty = 0, selfAmt = 0;
-  const selfCountries = new Set();
-  const selfBrands = new Set();
-  const selfTrades = data.filter(d => d._isSelf);
-
-  selfTrades.forEach(r => {
-    selfWeight += parseFloat(r["Weight(Kg)"] || 0);
-    selfQty += parseFloat(r["Quantity"] || 0);
-    selfAmt += parseFloat(r["Amount($)"] || 0);
-    selfCountries.add(r["Origin Country"]);
-    selfCountries.add(r["Destination Country"]);
-    selfBrands.add(r.Brand);
-  });
-
-  return (
-    <div className="animate-in fade-in space-y-6">
-      <div className="bg-white p-8 rounded-[2rem] shadow-2xl border-4 border-slate-900">
-        <div className="flex items-center gap-4 mb-8">
-          <div className="bg-red-100 p-4 rounded-2xl">
-            <ArrowLeftRight className="text-red-600" size={32} />
-          </div>
-          <div>
-            <h2 className="text-3xl font-black uppercase tracking-tighter">Self-Trade Intelligence</h2>
-            <p className="text-slate-500 font-bold">Exporter and Importer are the same legal entity</p>
+{activeTab === "self" && (
+  <div className="animate-in fade-in space-y-8">
+    {/* 1. HEADER STATS */}
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="bg-red-700 p-8 rounded-[3rem] text-white shadow-2xl border-b-8 border-red-900">
+        <div className="text-[10px] font-black uppercase opacity-80 tracking-widest">Circular Trade Volume</div>
+        <div className="text-5xl font-black mt-2">
+          ${(stats.totalCircularVolume || 0).toLocaleString()}
+        </div>
+        <div className="text-xs font-bold mt-4 bg-red-800/50 inline-block px-3 py-1 rounded-full">
+          Total potential tax leakage/wash trade detected
+        </div>
+      </div>
+      
+      <div className="bg-slate-900 p-8 rounded-[3rem] text-white shadow-2xl md:col-span-2 flex items-center justify-between border-b-8 border-slate-950">
+        <div>
+          <div className="text-[10px] font-black uppercase text-blue-400 tracking-widest">Risk Entities Identified</div>
+          <div className="text-4xl font-black mt-2">
+            {Object.keys(stats.selfTradeData || {}).length} Unique Actors
           </div>
         </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div className="bg-slate-50 p-6 rounded-2xl border-2 border-slate-100">
-            <div className="text-slate-500 text-xs font-black uppercase mb-1">Total Circular Volume</div>
-            <div className="text-2xl font-black">{selfWeight.toFixed(2)} KG</div>
-          </div>
-          <div className="bg-slate-50 p-6 rounded-2xl border-2 border-slate-100">
-            <div className="text-slate-500 text-xs font-black uppercase mb-1">Total Circular Value</div>
-            <div className="text-2xl font-black text-red-600">${selfAmt.toLocaleString()}</div>
-          </div>
-          <div className="bg-slate-50 p-6 rounded-2xl border-2 border-slate-100">
-            <div className="text-slate-500 text-xs font-black uppercase mb-1">Incidents</div>
-            <div className="text-2xl font-black">{selfTrades.length} Rows</div>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          <div className="space-y-4">
-            <h3 className="font-black uppercase text-sm text-blue-600">Risk Analysis</h3>
-            <div className="p-6 bg-red-50 border-2 border-red-100 rounded-2xl">
-              <div className="font-black text-red-800 mb-2">CRITICAL: CIRCULAR TRADE DETECTED</div>
-              <p className="text-sm text-red-700 leading-relaxed">
-                Entities are shipping goods to themselves. This is a primary indicator of 
-                <strong> VAT Carousel Fraud</strong> or <strong>Trade-Based Money Laundering</strong> 
-                to artificially inflate company turnover.
-              </p>
-            </div>
-          </div>
-          
-          <div className="space-y-4">
-            <h3 className="font-black uppercase text-sm text-blue-600">Network Footprint</h3>
-            <div className="flex flex-wrap gap-2">
-              {[...selfCountries].map(c => (
-                <span key={c} className="bg-slate-900 text-white text-[10px] px-3 py-1 rounded-full font-bold">{c}</span>
-              ))}
-            </div>
-            <div className="text-sm font-bold text-slate-700 mt-4">
-              Brands: <span className="text-slate-500">{[...selfBrands].join(", ")}</span>
-            </div>
-          </div>
+        <div className="bg-slate-800 p-4 rounded-full">
+          <AlertCircle size={40} className="text-red-500" />
         </div>
       </div>
     </div>
-  );
-})()}
+
+    {/* 2. ENTITY BREAKDOWN GRID */}
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {Object.entries(stats.selfTradeData || {}).sort((a,b) => b[1].amount - a[1].amount).map(([entity, data]) => (
+        <div key={entity} className="bg-white border-4 border-slate-900 rounded-[2.5rem] overflow-hidden shadow-xl hover:scale-[1.01] transition-transform">
+          <div className="bg-slate-900 p-5 flex justify-between items-center">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-red-600 rounded-full flex items-center justify-center text-white font-black">
+                {entity.charAt(0)}
+              </div>
+              <div>
+                <div className="text-xs text-slate-400 font-black uppercase">Forensic Entity ID</div>
+                <div className="text-white font-black text-lg leading-tight truncate max-w-[250px]">{entity}</div>
+              </div>
+            </div>
+            <div className="bg-red-600 text-white text-[10px] px-3 py-1 rounded-full font-black">
+              HIGH RISK
+            </div>
+          </div>
+          
+          <div className="p-8 grid grid-cols-2 gap-8">
+            <div>
+              <div className="text-[10px] font-black uppercase text-slate-400">Circular Amount</div>
+              <div className="text-2xl font-black text-red-700">${data.amount.toLocaleString()}</div>
+            </div>
+            <div>
+              <div className="text-[10px] font-black uppercase text-slate-400">Net Weight (KG)</div>
+              <div className="text-2xl font-black text-slate-900">{data.weight.toLocaleString()}</div>
+            </div>
+            <div className="col-span-2 pt-4 border-t-2 border-slate-100 flex justify-between items-center">
+              <div className="flex gap-2 items-center">
+                <span className="text-[10px] font-black text-slate-500 uppercase">Self-Trade Transactions:</span>
+                <span className="bg-slate-100 text-slate-900 px-3 py-1 rounded text-sm font-black">{data.count}</span>
+              </div>
+              <button 
+                onClick={() => {
+                  setActiveFilter('self');
+                  setActiveTab('audit');
+                }}
+                className="text-[10px] font-black text-blue-600 hover:underline flex items-center gap-1"
+              >
+                VIEW AUDIT TRAIL <ArrowRight size={12}/>
+              </button>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+
+    {/* 3. AI SUMMARY FOR SELF TRADE */}
+    <AISummary
+      title="Circular Trade Intel"
+      icon={AlertCircle}
+      content={`Detected ${Object.keys(stats.selfTradeData || {}).length} entities acting as both Exporter and Importer. The largest actor, ${Object.keys(stats.selfTradeData || {}).sort((a,b) => (stats.selfTradeData[b].amount - stats.selfTradeData[a].amount))[0] || 'N/A'}, accounts for a significant portion of the wash-trade volume.`}
+    />
+  </div>
+)}
           {/* TAB: FINANCIAL FORENSICS */}
 {activeTab === "finance" && (
 
