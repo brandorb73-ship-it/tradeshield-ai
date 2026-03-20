@@ -167,8 +167,18 @@ const analyzeFraud = (rawData) => {
   let totalAmt = 0;
 
   // 3️⃣ Single pass for all stats
-  cleanedData.forEach(r => {
-    const { Exporter: exp, Importer: imp, Brand: brand, "HS Code": hs, "Amount($)": amt, "Weight(Kg)": weight, Quantity: qty, "Origin Country": origin, "Destination Country": dest, _effectivePrice: unitPrice } = r;
+cleanedData.forEach(r => {
+    // These are your primary declarations for this row
+    const exp = r.Exporter || "UNKNOWN";
+    const imp = r.Importer || "UNKNOWN";
+    const brand = r.Brand || "UNKNOWN";
+    const hs = r["HS Code"] || "UNKNOWN";
+    const amt = r["Amount($)"] || 0;
+    const weight = r["Weight(Kg)"] || 0;
+    const qty = r.Quantity || 0;
+    const origin = r["Origin Country"] || "UNKNOWN";
+    const dest = r["Destination Country"] || "UNKNOWN";
+    const unitPrice = r._effectivePrice || 0;
 
     totalWeight += weight;
     totalAmt += amt;
@@ -178,28 +188,18 @@ const analyzeFraud = (rawData) => {
     else if (amt < 5000) amountBuckets.medium++;
     else amountBuckets.large++;
 
-    // Initialize entity stats
-  const exp = row.Exporter || "Unknown";
-  const imp = row.Importer || "Unknown";
+    // ✅ FIXED: Ensure the entities exist in entityStats without re-declaring 'exp' or 'imp'
+    [exp, imp].forEach(e => {
+      if (!entityStats[e]) {
+        entityStats[e] = {
+          self: 0, hs: 0, price: 0, density: 0, total: 0,
+          transactions: 0, priceAnomaly: 0, mlRisk: 0,
+          shellRisk: 0, ringScore: 0, cycleScore: 0, uTurns: 0,
+        };
+      }
+    });
 
-  [exp, imp].forEach(e => {
-    if (!entityStats[e]) {
-      entityStats[e] = {
-        self: 0,
-        hs: 0,
-        price: 0,
-        density: 0,
-        total: 0,
-        transactions: 0,
-        priceAnomaly: 0,
-        mlRisk: 0,
-        shellRisk: 0,
-        ringScore: 0,
-        cycleScore: 0,
-        uTurns: 0,
-      };
-    }
-  });
+    // Update stats for the exporter
     entityStats[exp].total += 1;
     entityStats[exp].transactions += 1;
 
