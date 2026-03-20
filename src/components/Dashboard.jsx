@@ -222,11 +222,14 @@ const brandTotals = {};
 
 cleanedData.forEach(r => {
   const brand = r.Brand || "UNKNOWN";
-  const w = parseFloat(r["Weight(Kg)"]?.toString().replace(/[^\d.-]/g, "")) || 0;
-  const a = parseFloat(r["Amount($)"]?.toString().replace(/[^\d.-]/g, "")) || 0;
+  // Clean values once here so the UI doesn't have to do it later
+  r._numWeight = parseFloat(r["Weight(Kg)"]?.toString().replace(/[^\d.-]/g, "")) || 0;
+  r._numAmount = parseFloat(r["Amount($)"]?.toString().replace(/[^\d.-]/g, "")) || 0;
+  r._numQty = parseFloat(r["Quantity"]?.toString().replace(/[^\d.-]/g, "")) || 0;
+
   if (!brandTotals[brand]) brandTotals[brand] = { weight: 0, amount: 0 };
-  brandTotals[brand].weight += w;
-  brandTotals[brand].amount += a;
+  brandTotals[brand].weight += r._numWeight;
+  brandTotals[brand].amount += r._numAmount;
 });
 
 Object.keys(brandTotals).forEach(b => {
@@ -239,25 +242,28 @@ cleanedData.forEach(r => {
   const imp = r.Importer || "UNKNOWN";
   const brand = r.Brand || "UNKNOWN";
   const hs = r["HS Code"] || "UNKNOWN";
-  const amt = parseFloat(r["Amount($)"]?.toString().replace(/[^\d.-]/g, "")) || 0;
-  const weight = parseFloat(r["Weight(Kg)"]?.toString().replace(/[^\d.-]/g, "")) || 0;
-  const qty = parseFloat(r["Quantity"]?.toString().replace(/[^\d.-]/g, "")) || 0;
-  const unit = r["Quantity Unit"]?.toLowerCase() || "";
+  const unit = (r["Quantity Unit"] || "").toLowerCase();
 
-  // DENSITY ANOMALY CALCULATION
-  if (unit.includes("stick") && qty > 0) {
-    const kgPerStick = weight / qty;
-    r._isDensityAnomaly = (kgPerStick < 0.0007 || kgPerStick > 0.0013);
-  } else {
-    r._isDensityAnomaly = false;
+  // A. Density Anomaly Logic
+  r._isDensityAnomaly = false;
+  if (unit.includes("stick") && r._numQty > 0) {
+    const density = r._numWeight / r._numQty;
+    if (density < 0.0007 || density > 0.0013) r._isDensityAnomaly = true;
   }
 
-  // PRICE ANOMALY
-  const unitPrice = weight > 0 ? amt / weight : 0;
+  // B. Price Anomaly Logic
+  const unitPrice = r._numWeight > 0 ? r._numAmount / r._numWeight : 0;
   const median = brandMedians[brand] || 0;
   r._isPrice = median > 0 && (unitPrice > median * 1.3 || unitPrice < median * 0.7);
 
-  // INITIALIZE STATS & ROLES
+  // C. HS Mismatch Logic
+  if (!brandToHS[brand]) brandToHS[brand] = hs;
+  r._isHS = brandToHS[brand] !== hs;
+
+  // D. Self-Trade Logic
+  r._isSelf = (exp === imp);
+
+  // E. Entity Risk Attribution (Counterparty Logic)
   [exp, imp].forEach(e => {
     if (!entityStats[e]) {
       entityStats[e] = { 
@@ -272,18 +278,12 @@ cleanedData.forEach(r => {
   entityStats[exp].transactions += 1;
   entityStats[imp].transactions += 1;
 
-  // RISK ATTRIBUTION (BOTH PARTIES)
   if (r._isPrice) {
     entityStats[exp].priceAnomaly += 1;
     entityStats[imp].priceAnomaly += 1;
   }
-  if (exp === imp) {
-    r._isSelf = true;
-    entityStats[exp].self += 1;
-  }
-  if (!brandToHS[brand]) brandToHS[brand] = hs;
-  if (brandToHS[brand] !== hs) {
-    r._isHS = true;
+  if (r._isSelf) entityStats[exp].self += 1;
+  if (r._isHS) {
     entityStats[exp].hs += 1;
     entityStats[imp].hs += 1;
   }
@@ -414,86 +414,79 @@ CLEAR
           </div>
 
           {/* TAB: LEDGER */}
-<tbody className="divide-y-2 divide-slate-100 text-slate-800 font-bold">
-  {filteredData.map((row, i) => (
-    <tr key={i} className={`${row._isSelf ? 'bg-red-50' : 'hover:bg-slate-50'} border-b border-slate-100`}>
-      
-      {/* 1. RISK FLAG + HOVER BREAKDOWN */}
-      <td className="p-5">
-        <div 
-          className="text-sm font-black border-b border-dotted border-slate-400 inline-block cursor-help"
-          title={`Risk Breakdown:
-${row._isSelf ? '• Self-Trade (+0.30)' : ''}
-${row._isHS ? '• HS Mismatch (+0.20)' : ''}
-${row._isPrice ? '• Price Anomaly (+0.30)' : ''}
-${row._isDensityAnomaly ? '• Density Anomaly (+0.30)' : ''}`}
-        >
-          {(
-            (row._isSelf ? 0.3 : 0) +
-            (row._isHS ? 0.2 : 0) +
-            (row._isPrice ? 0.3 : 0) +
-            (row._isDensityAnomaly ? 0.3 : 0)
-          ).toFixed(2)}
-        </div>
-        <div className="flex flex-wrap gap-1 mt-1">
-          {row._isSelf && <span className="bg-red-700 text-white text-[10px] px-2 py-1 rounded">SELF</span>}
-          {row._isHS && <span className="bg-orange-600 text-white text-[10px] px-2 py-1 rounded">HS</span>}
-          {row._isPrice && <span className="bg-purple-700 text-white text-[10px] px-2 py-1 rounded">PRICE</span>}
-          {row._isDensityAnomaly && <span className="bg-yellow-600 text-white text-[10px] px-2 py-1 rounded">DENSITY</span>}
-        </div>
-      </td>
+{activeTab === "audit" && (
+  <div className="animate-in fade-in space-y-6">
+    <div className="bg-white rounded-[2rem] shadow-2xl border-4 border-slate-900 overflow-hidden">
+      <table className="w-full text-left">
+        <thead className="bg-slate-900 text-white text-[10px] font-black uppercase">
+          <tr>
+            <th className="p-5 text-left">Risk Flag</th>
+            <th className="p-5 text-left">Date</th>
+            <th className="p-5 text-left">Entity Involved</th>
+            <th className="p-5 text-left">Brand / HS</th>
+            <th className="p-5 text-left">Route</th>
+            <th className="p-5 text-right">Weight (Kg)</th>
+            <th className="p-5 text-right">Amount ($)</th>
+            <th className="p-5 text-right">Declared Qty</th>
+            <th className="p-5 text-right">Density</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y-2 divide-slate-100 text-slate-800 font-bold">
+          {filteredData.map((row, i) => {
+            const riskScore = (row._isSelf ? 0.3 : 0) + (row._isHS ? 0.2 : 0) + (row._isPrice ? 0.3 : 0) + (row._isDensityAnomaly ? 0.3 : 0);
+            const riskTooltip = `Self: ${row._isSelf ? 'YES' : 'NO'} | HS: ${row._isHS ? 'ERR' : 'OK'} | Price: ${row._isPrice ? 'ERR' : 'OK'} | Density: ${row._isDensityAnomaly ? 'ERR' : 'OK'}`;
 
-      <td className="p-5 text-sm font-bold text-slate-500">{row.Date}</td>
-
-      <td className="p-5">
-        <div className="text-sm font-black uppercase">{row.Exporter}</div>
-        <div className="text-[10px] text-blue-700 font-bold uppercase">To: {row.Importer}</div>
-      </td>
-
-      <td className="p-5 uppercase">
-        <div className="text-sm font-black">{row.Brand}</div>
-        <div className="text-[10px] text-slate-500 font-bold">HS: {row["HS Code"]}</div>
-      </td>
-
-      <td className="p-5">
-        <div className="text-[10px] font-black uppercase flex items-center gap-1">
-          {row["Origin Country"]} <ArrowRight size={10}/> {row["Destination Country"]}
-        </div>
-      </td>
-
-      <td className="p-5 text-right font-black text-slate-900">
-        {row["Weight(Kg)"]?.toLocaleString()}
-      </td>
-
-      <td className="p-5 text-right font-black text-slate-900">
-        ${(row["Amount($)"] || 0).toLocaleString()}
-      </td>
-
-      {/* DECLARED QTY COLUMN (Preserved) */}
-      <td className="p-5 text-right">
-        <div className="text-sm font-black text-slate-700">{row.Quantity?.toLocaleString()}</div>
-        <div className="text-[9px] font-black text-blue-500 uppercase">{row["Quantity Unit"]}</div>
-      </td>
-
-      {/* DENSITY COLUMN */}
-      <td className="p-5 text-right text-xs font-mono">
-        {row["Quantity Unit"]?.toLowerCase().includes('stick') && row.Quantity > 0 
-          ? (row["Weight(Kg)"] / row.Quantity).toFixed(4) 
-          : "-"}
-      </td>
-    </tr>
-  ))}
-</tbody>
-        {/* FOOTER WITH ADJUSTED COLSPAN */}
+            return (
+              <tr key={i} className={`${row._isSelf ? 'bg-red-50' : 'hover:bg-slate-50'} border-b border-slate-100`}>
+                <td className="p-5">
+                  <div className="text-sm font-black border-b border-dotted border-slate-400 inline-block cursor-help" title={riskTooltip}>
+                    {riskScore.toFixed(2)}
+                  </div>
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {row._isSelf && <span className="bg-red-700 text-white text-[8px] px-1.5 py-0.5 rounded">SELF</span>}
+                    {row._isHS && <span className="bg-orange-600 text-white text-[8px] px-1.5 py-0.5 rounded">HS</span>}
+                    {row._isPrice && <span className="bg-purple-700 text-white text-[8px] px-1.5 py-0.5 rounded">PRICE</span>}
+                    {row._isDensityAnomaly && <span className="bg-yellow-600 text-white text-[8px] px-1.5 py-0.5 rounded">DENSITY</span>}
+                  </div>
+                </td>
+                <td className="p-5 text-xs text-slate-500">{row.Date}</td>
+                <td className="p-5">
+                  <div className="text-sm font-black uppercase truncate max-w-[150px]">{row.Exporter}</div>
+                  <div className="text-[9px] text-blue-700 font-bold">TO: {row.Importer}</div>
+                </td>
+                <td className="p-5">
+                  <div className="text-sm font-black uppercase">{row.Brand}</div>
+                  <div className="text-[9px] text-slate-500">HS: {row["HS Code"]}</div>
+                </td>
+                <td className="p-5">
+                  <div className="text-[9px] font-black uppercase flex items-center gap-1">
+                    {row["Origin Country"]} <ArrowRight size={8}/> {row["Destination Country"]}
+                  </div>
+                </td>
+                <td className="p-5 text-right font-black">{row._numWeight.toLocaleString()}</td>
+                <td className="p-5 text-right font-black text-red-700">${row._numAmount.toLocaleString()}</td>
+                <td className="p-5 text-right">
+                  <div className="text-sm font-black text-slate-600">{row._numQty.toLocaleString()}</div>
+                  <div className="text-[8px] font-black text-blue-500 uppercase">{row["Quantity Unit"]}</div>
+                </td>
+                <td className="p-5 text-right text-xs font-mono">
+                  {row._isDensityAnomaly || (row["Quantity Unit"]?.toLowerCase().includes('stick')) 
+                    ? (row._numWeight / row._numQty).toFixed(4) 
+                    : "-"}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
         <tfoot className="bg-slate-100 border-t-4 border-slate-900 font-black">
-  <tr>
-    {/* Update colSpan from 5 to 6 */}
-    <td colSpan="6" className="p-6 text-right text-xl uppercase">Total Audit Volume:</td>
-    <td className="p-6 text-right text-3xl text-red-700">${visibleTotals.amount.toLocaleString()}</td>
-    <td></td>
-    <td></td>
-  </tr>
-</tfoot>
+          <tr>
+            <td colSpan="5" className="p-6 text-right text-lg uppercase">Audit Totals:</td>
+            <td className="p-6 text-right text-xl">{visibleTotals.weight.toFixed(0)} KG</td>
+            <td className="p-6 text-right text-2xl text-red-700">${visibleTotals.amount.toLocaleString()}</td>
+            <td></td>
+            <td></td>
+          </tr>
+        </tfoot>
       </table>
     </div>
   </div>
