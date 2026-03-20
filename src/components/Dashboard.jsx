@@ -306,21 +306,32 @@ const analyzeFraud = (rawData) => {
     if (rings.find(r => r?.includes?.(e))) entityStats[e].ringScore = (entityStats[e].ringScore || 0) + 1;
   });
 
-  // --- FINAL STATE SYNC ---
-  // Update main data state
+ // --- FINAL STATE SYNC ---
+  
+  // 1. Convert Sets to Arrays so the UI doesn't crash
+  const finalSelfTradeData = {};
+  Object.entries(selfTradeData).forEach(([entity, data]) => {
+    finalSelfTradeData[entity] = {
+      ...data,
+      countries: Array.from(data.countries || []),
+      brands: Array.from(data.brands || [])
+    };
+  });
+
+  // 2. Update main data state
   setData(cleanedData);
   setIntel(intelLayer);
 
-  // Update unified stats object
+  // 3. Update unified stats object (Note the change to selfTradeData)
   setStats({
     totalWeight,
     totalAmt,
     totalCircularVolume,
-    selfTradeData,
+    selfTradeData: finalSelfTradeData, // <--- Use the converted version here
     entityStats,
-    routeIntel: corridors, // Fixed: Passes to Map Tab
+    routeIntel: corridors,
     brandBaselines,
-    hsAgg,                // Fixed: Passes to HS Tab
+    hsAgg,
     rings,
     cycles,
     fraudProbability: fraudProb
