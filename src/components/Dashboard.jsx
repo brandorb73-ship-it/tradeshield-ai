@@ -42,9 +42,10 @@ const entityERS = useMemo(() => {
   if (!stats.entityStats) return [];
   return Object.entries(stats.entityStats).map(([name, s]) => {
     const raw =
-  (s.self * 25) +
-  (s.hs * 15) +
-  (s.price * 25) +
+(s.self * 20) +
+(s.hs * 15) +
+(s.price * 20) +
+(s.density * 30)
   (s.mlRisk * 20) +
   (s.shellRisk * 30) +
   (s.ringScore * 40) +
@@ -176,7 +177,7 @@ const analyzeFraud = (rawData) => {
 
     // Initialize entity stats
     [exp, imp].forEach(e => {
-      if (!entityStats[e]) entityStats[e] = { self: 0, hs: 0, price: 0, total: 0, transactions: 0, priceAnomaly: 0, mlRisk: 0, shellRisk: 0, ringScore: 0, cycleScore: 0, uTurns: 0 };
+      if (!entityStats[e]) entityStats[e] = { self: 0, hs: 0, price: 0, total: 0, transactions: 0, priceAnomaly: 0, density: 0, mlRisk: 0, shellRisk: 0, ringScore: 0, cycleScore: 0, uTurns: 0 };
     });
     entityStats[exp].total += 1;
     entityStats[exp].transactions += 1;
@@ -203,7 +204,9 @@ const analyzeFraud = (rawData) => {
       selfAgg[exp].countries.add(dest);
       r._isSelf = true;
     }
-
+if (r._isDensityAnomaly) {
+  entityStats[exp].density += 1;
+}
     // Mass balance
     if (!massBalance[exp]) massBalance[exp] = {};
     if (!massBalance[exp][brand]) massBalance[exp][brand] = { exp: 0, imp: 0 };
