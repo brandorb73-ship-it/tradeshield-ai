@@ -280,7 +280,7 @@ const analyzeFraud = (rawData) => {
     selfTradeData: selfTradeData,
     brandBaselines: brandBaselines,
     entityStats: entityStats,
-    routeIntel: processRouteIntel(cleanedData)
+    routeIntel: detectTradeCorridors(cleanedData)
   });
 
   setProcessedData(cleanedData);
@@ -824,22 +824,27 @@ AI Intelligence Summary
       <Globe className="text-blue-500"/> Trade Corridor Density
     </h2>
     <div className="space-y-4">
-      {/* ADDED A NULL CHECK HERE (stats.routeIntel || {}) */}
+      {/* Object.entries converts the corridors object into a loopable list */}
       {Object.entries(stats.routeIntel || {}).map(([route, d]) => (
-        <div key={route} className="p-8 bg-slate-800 rounded-[2rem] border-2 border-slate-700 flex justify-between items-center hover:border-blue-500 transition-all">
+        <div key={route} className="p-8 bg-slate-800 rounded-[2rem] border-2 border-slate-700 flex justify-between items-center">
           <div>
             <div className="text-3xl font-black uppercase tracking-tighter text-blue-400">{route}</div>
             <div className="flex flex-wrap gap-2 mt-3">
+              {/* Convert the Set to an Array for rendering */}
               {Array.from(d.entities || []).map(e => (
-                <span key={e} className="text-[10px] font-black bg-slate-700 px-3 py-1 rounded-full text-slate-300 border border-slate-600">
+                <span key={e} className="text-[10px] font-black bg-slate-700 px-3 py-1 rounded text-slate-300 border border-slate-600 uppercase">
                   {e}
                 </span>
               ))}
             </div>
           </div>
           <div className="text-right">
-            <div className="text-2xl font-black text-white">${d.amount.toLocaleString()}</div>
-            <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{d.weight.toFixed(0)} KG TRANSACTED</div>
+            <div className="text-2xl font-black text-white">
+              ${(d.amount || 0).toLocaleString()}
+            </div>
+            <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
+              {(d.weight || 0).toFixed(0)} KG TRANSACTED
+            </div>
           </div>
         </div>
       ))}
@@ -849,12 +854,12 @@ AI Intelligence Summary
       <AISummary
         title="Corridor Intelligence"
         icon={Globe}
-        content={`High-volume corridors detected: ${Object.keys(stats.routeIntel || {}).length}. Major liquidity flow identified in the ${Object.keys(stats.routeIntel || {})[0] || 'primary'} route.`}
+        content={`High-volume corridors detected: ${Object.keys(stats.routeIntel || {}).length}. Major liquidity flow identified across ${Object.keys(stats.routeIntel || {}).length} routes.`}
       />
     </div>
   </div>
 )}
-
+          
 {/* TAB: FRAUD HEATMAP */}
 {activeTab === "heat" && (
   <div className="bg-black p-6 rounded-2xl">
