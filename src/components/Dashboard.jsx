@@ -420,11 +420,25 @@ CLEAR
       <table className="w-full text-left">
         <thead className="bg-slate-900 text-white text-[10px] font-black uppercase">
           <tr>
-            <th className="p-5 text-left">Risk Flag</th>
-            <th className="p-5 text-left">Date</th>
-            <th className="p-5 text-left">Entity Involved</th>
-            <th className="p-5 text-left">Brand / HS</th>
-            <th className="p-5 text-left">Route</th>
+            <th className="p-5">
+              <div className="flex flex-col gap-2">
+                <span>Risk Flag</span>
+                <select 
+                  value={activeFilter}
+                  onChange={(e) => setActiveFilter(e.target.value)}
+                  className="bg-slate-800 text-blue-400 border border-slate-700 rounded px-2 py-1 text-[10px] focus:outline-none cursor-pointer"
+                >
+                  <option value="all">ALL SHIPMENTS</option>
+                  <option value="self">SELF TRADE</option>
+                  <option value="hs">HS MISMATCH</option>
+                  <option value="price">PRICE ANOMALY</option>
+                </select>
+              </div>
+            </th>
+            <th className="p-5">Date</th>
+            <th className="p-5">Entity Involved</th>
+            <th className="p-5">Brand / HS</th>
+            <th className="p-5">Route</th>
             <th className="p-5 text-right">Weight (Kg)</th>
             <th className="p-5 text-right">Amount ($)</th>
             <th className="p-5 text-right">Declared Qty</th>
@@ -433,14 +447,27 @@ CLEAR
         </thead>
         <tbody className="divide-y-2 divide-slate-100 text-slate-800 font-bold">
           {filteredData.map((row, i) => {
-            const riskScore = (row._isSelf ? 0.3 : 0) + (row._isHS ? 0.2 : 0) + (row._isPrice ? 0.3 : 0) + (row._isDensityAnomaly ? 0.3 : 0);
-            const riskTooltip = `Self: ${row._isSelf ? 'YES' : 'NO'} | HS: ${row._isHS ? 'ERR' : 'OK'} | Price: ${row._isPrice ? 'ERR' : 'OK'} | Density: ${row._isDensityAnomaly ? 'ERR' : 'OK'}`;
+            const sScore = row._isSelf ? 0.3 : 0;
+            const hScore = row._isHS ? 0.2 : 0;
+            const pScore = row._isPrice ? 0.3 : 0;
+            const dScore = row._isDensityAnomaly ? 0.3 : 0;
+            const totalRisk = sScore + hScore + pScore + dScore;
+            
+            const riskTooltip = [
+              row._isSelf ? `• Self-Trade (+0.30)` : null,
+              row._isHS ? `• HS Mismatch (+0.20)` : null,
+              row._isPrice ? `• Price Anomaly (+0.30)` : null,
+              row._isDensityAnomaly ? `• Density Anomaly (+0.30)` : null
+            ].filter(Boolean).join('\n') || "No Risks Detected";
 
             return (
               <tr key={i} className={`${row._isSelf ? 'bg-red-50' : 'hover:bg-slate-50'} border-b border-slate-100`}>
                 <td className="p-5">
-                  <div className="text-sm font-black border-b border-dotted border-slate-400 inline-block cursor-help" title={riskTooltip}>
-                    {riskScore.toFixed(2)}
+                  <div 
+                    className="text-sm font-black border-b border-dotted border-slate-400 inline-block cursor-help" 
+                    title={riskTooltip}
+                  >
+                    {totalRisk.toFixed(2)}
                   </div>
                   <div className="flex flex-wrap gap-1 mt-1">
                     {row._isSelf && <span className="bg-red-700 text-white text-[8px] px-1.5 py-0.5 rounded">SELF</span>}
@@ -451,26 +478,30 @@ CLEAR
                 </td>
                 <td className="p-5 text-xs text-slate-500">{row.Date}</td>
                 <td className="p-5">
-                  <div className="text-sm font-black uppercase truncate max-w-[150px]">{row.Exporter}</div>
-                  <div className="text-[9px] text-blue-700 font-bold">TO: {row.Importer}</div>
+                  <div className="text-sm font-black uppercase truncate max-w-[140px]">{row.Exporter}</div>
+                  <div className="text-[9px] text-blue-700 font-bold uppercase">To: {row.Importer}</div>
                 </td>
                 <td className="p-5">
                   <div className="text-sm font-black uppercase">{row.Brand}</div>
-                  <div className="text-[9px] text-slate-500">HS: {row["HS Code"]}</div>
+                  <div className="text-[9px] text-slate-500 font-bold uppercase">HS: {row["HS Code"]}</div>
                 </td>
                 <td className="p-5">
                   <div className="text-[9px] font-black uppercase flex items-center gap-1">
                     {row["Origin Country"]} <ArrowRight size={8}/> {row["Destination Country"]}
                   </div>
                 </td>
-                <td className="p-5 text-right font-black">{row._numWeight.toLocaleString()}</td>
-                <td className="p-5 text-right font-black text-red-700">${row._numAmount.toLocaleString()}</td>
+                <td className="p-5 text-right font-black text-slate-900">
+                  {row._numWeight?.toLocaleString()}
+                </td>
+                <td className="p-5 text-right font-black text-slate-900">
+                  ${row._numAmount?.toLocaleString()}
+                </td>
                 <td className="p-5 text-right">
-                  <div className="text-sm font-black text-slate-600">{row._numQty.toLocaleString()}</div>
+                  <div className="text-sm font-black text-slate-700">{row._numQty?.toLocaleString()}</div>
                   <div className="text-[8px] font-black text-blue-500 uppercase">{row["Quantity Unit"]}</div>
                 </td>
                 <td className="p-5 text-right text-xs font-mono">
-                  {row._isDensityAnomaly || (row["Quantity Unit"]?.toLowerCase().includes('stick')) 
+                  {row["Quantity Unit"]?.toLowerCase().includes('stick') 
                     ? (row._numWeight / row._numQty).toFixed(4) 
                     : "-"}
                 </td>
@@ -480,8 +511,8 @@ CLEAR
         </tbody>
         <tfoot className="bg-slate-100 border-t-4 border-slate-900 font-black">
           <tr>
-            <td colSpan="5" className="p-6 text-right text-lg uppercase">Audit Totals:</td>
-            <td className="p-6 text-right text-xl">{visibleTotals.weight.toFixed(0)} KG</td>
+            <td colSpan="5" className="p-6 text-right text-lg uppercase">Total Volume:</td>
+            <td className="p-6 text-right text-xl">{visibleTotals.weight.toFixed(2)} KG</td>
             <td className="p-6 text-right text-2xl text-red-700">${visibleTotals.amount.toLocaleString()}</td>
             <td></td>
             <td></td>
