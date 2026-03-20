@@ -1,7 +1,7 @@
 import React from 'react';
 
 // Notice the "export" keyword before "const"
-export const MassBalanceTab = ({ stats }) => {
+export default function MassBalanceTab({ stats }) {
   
   // 1. Safety Gate: Prevents the "Grey Screen" if data is missing
   const data = stats?.massBalance || {};
