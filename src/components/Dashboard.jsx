@@ -308,24 +308,6 @@ const analyzeFraud = (rawData) => {
     if (mlScores[e]) entityStats[e].mlRisk = mlScores[e];
     if (rings.find(r => r?.includes?.(e))) entityStats[e].ringScore = (entityStats[e].ringScore || 0) + 1;
   });
-// --- NEW: HS INTEL AGGREGATION ---
-const hsAgg = {};
-cleanedData.forEach(r => {
-  // Create a unique key for Entity + HS + Brand combo
-  const hsKey = `${r.Exporter}-${r["HS Code"]}-${r.Brand}`;
-  if (!hsAgg[hsKey]) {
-    hsAgg[hsKey] = { 
-      entity: r.Exporter, 
-      hs: r["HS Code"], 
-      brand: r.Brand, 
-      count: 0, 
-      amount: 0 
-    };
-  }
-  hsAgg[hsKey].count++;
-  hsAgg[hsKey].amount += r["Amount($)"];
-});
-
 // --- NEW: MASS BALANCE CALCULATION ---
 const massBalance = {};
 cleanedData.forEach(r => {
