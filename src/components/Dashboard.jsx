@@ -283,59 +283,41 @@ const analyzeFraud = (rawData) => {
     routeIntel: detectTradeCorridors(cleanedData)
   });
 
-  setProcessedData(cleanedData);
-}; // <--- THIS BRACE CLOSES analyzeFraud
-  
-  // ✅ Run external engines AFTER all flags
-  let intelLayer = {}, rings = [], cycles = [], shells = [], shellScores = {}, corridors = [], anomalies = [];
-  let tobaccoSignals = [], uTurnEntities = [], vatEntities = [], phantomEntities = [], priceEntities = [], mlScores = {}, fraudProb = 0;
+setProcessedData(cleanedData);
+
+  // 1️⃣ Run external engines (NOW INSIDE THE FUNCTION)
+  let intelLayer = {}, rings = [], cycles = [], shells = [], shellScores = {};
+  let corridors = [], anomalies = [], tobaccoSignals = [], mlScores = {}, fraudProb = 0;
 
   try { intelLayer = runIntelEngine(cleanedData); } catch(e){ console.error(e); }
   try { rings = detectFraudRings(cleanedData); } catch(e){ console.error(e); }
   try { cycles = detectUTurnTrade(cleanedData); } catch(e){ console.error(e); }
-  try { shells = detectShellCompanies(cleanedData); } catch(e){ console.error(e); }
-  try { shellScores = calculateShellScore(cleanedData); } catch(e){ console.error(e); }
-  try { corridors = detectTradeCorridors(cleanedData); } catch(e){ console.error(e); }
-  try { anomalies = mlScore(cleanedData); } catch(e){ console.error(e); }
-
-  try { tobaccoSignals = detectTobaccoFraud(cleanedData); } catch(e){ console.error(e); }
-  try { uTurnEntities = detectUTurnTrade(cleanedData); } catch(e){ console.error(e); }
-  try { vatEntities = detectVATCarousel(cleanedData); } catch(e){ console.error(e); }
-  try { phantomEntities = detectPhantomExporter(cleanedData); } catch(e){ console.error(e); }
-  try { priceEntities = detectPriceFraud(cleanedData); } catch(e){ console.error(e); }
+  try { corridors = detectTradeCorridors(cleanedData); } catch(e) { console.error(e); }
   try { mlScores = runFraudEngine(cleanedData); } catch(e){ console.error(e); }
   try { fraudProb = calculateFraudProbability(cleanedData, intelLayer); } catch(e){ console.error(e); }
 
-  // Apply external scores to entities
+  // 2️⃣ Apply external scores to entityStats
   Object.keys(entityStats).forEach(e => {
     if (mlScores[e]) entityStats[e].mlRisk = mlScores[e];
-    if (shellScores[e]) entityStats[e].shellRisk = shellScores[e];
-    if (rings.find(r => r?.includes?.(e))) entityStats[e].ringScore += 1;
-    if (cycles.find(c => c?.includes?.(e))) entityStats[e].cycleScore += 1;
+    if (rings.find(r => r?.includes?.(e))) entityStats[e].ringScore = (entityStats[e].ringScore || 0) + 1;
   });
 
-  // Update React state
+  // 3️⃣ SINGLE Final State Update
   setData(cleanedData);
   setIntel(intelLayer);
-  setFraudStats({ vat: vatEntities, phantom: phantomEntities, price: priceEntities, uturn: uTurnEntities, mlScores });
   setStats({
-    totalWeight,
-    totalAmt,
+    totalWeight,      // These will now have the actual sums
+    totalAmt,         // These will now have the actual sums
+    totalCircularVolume, // From your self-trade logic
+    selfTradeData,    // From your self-trade logic
     entityStats,
-    massBalance,
-    selfAgg,
-    routeIntel,
-    hsAgg,
-    brandAvgs,
-    amountBuckets,
-    tobaccoSignals,
-    fraudProbability: fraudProb,
+    routeIntel: corridors, // This fixes the Map Tab $0 issue
+    brandBaselines,
     rings,
     cycles,
-    shells,
-    corridors
+    fraudProbability: fraudProb
   });
-};
+}; 
   return (
     <div className="min-h-screen bg-[#f8fafc] text-slate-900 pb-20 font-sans">
       <nav className="bg-[#020617] text-white py-6 px-8 shadow-2xl border-b-4 border-blue-600 sticky top-0 z-50">
@@ -733,90 +715,62 @@ AI Intelligence Summary
   </div>
 )}
           {/* TAB: FINANCIAL FORENSICS */}
+{/* TAB: FINANCIAL FORENSICS */}
 {activeTab === "finance" && (
+  <div className="space-y-6">
+    <h2 className="text-2xl font-black">Financial Forensics Intelligence</h2>
 
-<div className="space-y-6">
-
-  <h2 className="text-2xl font-black">
-    Financial Forensics Intelligence
-  </h2>
-
-  {/* ---------------- SUMMARY ---------------- */}
-  <div className="grid grid-cols-3 gap-4">
-
-    <div className="bg-slate-100 p-4 rounded-xl">
-      <div className="text-sm text-slate-500">Median Price</div>
-      <div className="text-xl font-bold">${fin.avgPrice?.toFixed(2)}</div>
-    </div>
-
-    <div className="bg-slate-100 p-4 rounded-xl">
-      <div className="text-sm text-slate-500">Anomaly Rate</div>
-      <div className="text-xl font-bold">{fin.anomalyRate}%</div>
-    </div>
-
-    <div className="bg-red-100 p-4 rounded-xl">
-      <div className="text-sm text-red-600">Estimated Tax Loss</div>
-      <div className="text-xl font-bold">
-        ${fin.taxLoss.toLocaleString()}
+    {/* Summary Row */}
+    <div className="grid grid-cols-3 gap-4">
+      <div className="bg-slate-100 p-4 rounded-xl">
+        <div className="text-sm text-slate-500">Median Price</div>
+        <div className="text-xl font-bold">${fin.avgPrice?.toFixed(2)}</div>
+      </div>
+      <div className="bg-slate-100 p-4 rounded-xl">
+        <div className="text-sm text-slate-500">Anomaly Rate</div>
+        <div className="text-xl font-bold">{fin.anomalyRate}%</div>
+      </div>
+      <div className="bg-red-100 p-4 rounded-xl">
+        <div className="text-sm text-red-600">Estimated Tax Loss</div>
+        <div className="text-xl font-bold">${fin.taxLoss.toLocaleString()}</div>
       </div>
     </div>
 
-  </div>
-
-  {/* ---------------- ANOMALIES ---------------- */}
-  <div>
-
-    <h3 className="text-lg font-bold mb-3 text-red-600">
-      Value Manipulation Signals
-    </h3>
-
-    {fin.anomalies.slice(0,20).map((a,i)=>(
-      <div key={i} className="border p-3 mb-2 rounded bg-red-50">
-
-        <div className="font-bold">{a.entity}</div>
-
-        <div className="text-sm">
-          Price: ${a.price} vs Median ${a.median}<br/>
-          Deviation: {a.deviation}%<br/>
-          Weight: {a.weight} KG<br/>
-          Value: ${a.amount.toLocaleString()}<br/>
-          <span className="text-red-600 font-semibold">
-            {a.reason}
-          </span>
+    {/* Anomalies List */}
+    <div>
+      <h3 className="text-lg font-bold mb-3 text-red-600">Value Manipulation Signals</h3>
+      {fin.anomalies.slice(0,20).map((a, i) => (
+        <div key={i} className="border p-3 mb-2 rounded bg-red-50">
+          <div className="font-bold">{a.entity}</div>
+          <div className="text-sm">
+            Price: ${a.price} vs Median ${a.median}<br/>
+            Deviation: {a.deviation}%<br/>
+            Weight: {a.weight} KG<br/>
+            Value: ${a.amount.toLocaleString()}<br/>
+            <span className="text-red-600 font-semibold">{a.reason}</span>
+          </div>
         </div>
+      ))} {/* <--- Ensure this is closed */}
+    </div>
 
-      </div>
-    ))}
+    {/* Clusters List */}
+    <div>
+      <h3 className="text-lg font-bold mb-3 text-blue-600">Invoice Pattern Clusters</h3>
+      {fin.clusters.map((c, i) => (
+        <div key={i} className="text-sm border-b py-2">
+          <b>{c.exporter}</b> → Price Band ${c.priceBand}<br/>
+          Shipments: {c.shipments} | Value: ${c.totalValue.toLocaleString()}
+        </div>
+      ))} {/* <--- Ensure this is closed */}
+    </div>
 
+    <AISummary
+      title="Financial Risk Insight"
+      icon={DollarSign}
+      content={`Anomaly rate is ${fin.anomalyRate}%. Estimated tax leakage: $${fin.taxLoss.toLocaleString()}.`}
+    />
   </div>
-
-  {/* ---------------- CLUSTERS ---------------- */}
-  <div>
-
-    <h3 className="text-lg font-bold mb-3 text-blue-600">
-      Invoice Pattern Clusters
-    </h3>
-
-    {fin.clusters.map((c,i)=>(
-      <div key={i} className="text-sm border-b py-2">
-
-        <b>{c.exporter}</b> → Price Band ${c.priceBand}<br/>
-        Shipments: {c.shipments} | 
-        Value: ${c.totalValue.toLocaleString()}
-
-      </div>
-    ))}
-
-  </div>
-<AISummary
-  title="Financial Risk Insight"
-  icon={DollarSign}
-  content={`Anomaly rate is ${fin.anomalyRate}%. Estimated tax leakage: $${fin.taxLoss.toLocaleString()}.`}
- />
-</div>
-
 )}
-
           {/* TAB: MAP INTEL */}
 {activeTab === "map" && (
   <div className="bg-slate-900 p-12 rounded-[4rem] text-white animate-in fade-in">
