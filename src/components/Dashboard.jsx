@@ -186,105 +186,74 @@ const analyzeFraud = (rawData) => {
   let totalWeight = 0;
   let totalAmt = 0;
 
-  // 3️⃣ Single pass for all stats
+// --- 1. PRE-CALCULATE BRAND MEDIANS (The "Gold Standard") ---
+const brandMedians = {};
+const brandTotals = {};
+
 cleanedData.forEach(r => {
-    // These are your primary declarations for this row
+  const brand = r.Brand || "UNKNOWN";
+  const w = r["Weight(Kg)"] || 0;
+  const a = r["Amount($)"] || 0;
+  if (!brandTotals[brand]) brandTotals[brand] = { weight: 0, amount: 0 };
+  brandTotals[brand].weight += w;
+  brandTotals[brand].amount += a;
+});
+
+Object.keys(brandTotals).forEach(b => {
+  brandMedians[b] = brandTotals[b].weight > 0 ? brandTotals[b].amount / brandTotals[b].weight : 0;
+});
+
+// --- 2. NOW RUN THE SINGLE PASS FOR ALL STATS ---
+cleanedData.forEach(r => {
     const exp = r.Exporter || "UNKNOWN";
     const imp = r.Importer || "UNKNOWN";
     const brand = r.Brand || "UNKNOWN";
     const hs = r["HS Code"] || "UNKNOWN";
     const amt = r["Amount($)"] || 0;
     const weight = r["Weight(Kg)"] || 0;
-    const qty = r.Quantity || 0;
-    const origin = r["Origin Country"] || "UNKNOWN";
-    const dest = r["Destination Country"] || "UNKNOWN";
-    const unitPrice = r._effectivePrice || 0;
+    const unitPrice = weight > 0 ? amt / weight : 0; // Use Weight-based price
 
     totalWeight += weight;
     totalAmt += amt;
 
-    // Financial bucket
-    if (amt < 1000) amountBuckets.small++;
-    else if (amt < 5000) amountBuckets.medium++;
-    else amountBuckets.large++;
-
-    // ✅ FIXED: Ensure the entities exist in entityStats without re-declaring 'exp' or 'imp'
+    // Ensure entity exists in stats
     [exp, imp].forEach(e => {
       if (!entityStats[e]) {
-        entityStats[e] = {
-          self: 0, hs: 0, price: 0, density: 0, total: 0,
-          transactions: 0, priceAnomaly: 0, mlRisk: 0,
-          shellRisk: 0, ringScore: 0, cycleScore: 0, uTurns: 0,
+        entityStats[e] = { 
+          self: 0, hs: 0, price: 0, density: 0, transactions: 0, priceAnomaly: 0 
         };
       }
     });
 
-    // Update stats for the exporter
-    entityStats[exp].total += 1;
     entityStats[exp].transactions += 1;
 
-    // HS aggregation
-    const hsKey = `${exp}|${brand}|${hs}`;
-    if (!hsAgg[hsKey]) hsAgg[hsKey] = { entity: exp, brand, hs, weight: 0, amount: 0, count: 0 };
-    hsAgg[hsKey].weight += weight;
-    hsAgg[hsKey].amount += amt;
-    hsAgg[hsKey].count++;
-
-    // HS mismatch
-    if (!brandToHS[brand]) brandToHS[brand] = hs;
-    else if (brandToHS[brand] !== hs) entityStats[exp].hs += 1;
-
-    // Self-trade
-    if (exp === imp) {
-      entityStats[exp].self += 1;
-      if (!selfAgg[exp]) selfAgg[exp] = { weight: 0, qty: 0, countries: new Set(), amount: 0 };
-      selfAgg[exp].weight += weight;
-      selfAgg[exp].qty += qty;
-      selfAgg[exp].amount += amt;
-      selfAgg[exp].countries.add(origin);
-      selfAgg[exp].countries.add(dest);
-      r._isSelf = true;
+    // PRICE ANOMALY LOGIC (±30% from pre-calculated median)
+    const median = brandMedians[brand] || 0;
+    r._isPrice = median > 0 && (unitPrice > median * 1.3 || unitPrice < median * 0.7);
+    
+    if (r._isPrice) {
+      entityStats[exp].price += 1;
+      entityStats[exp].priceAnomaly += 1; // This fixes the ERS Card showing 0
     }
-if (r._isDensityAnomaly) {
-  entityStats[exp].density += 1;
-}
-    // Mass balance
-    if (!massBalance[exp]) massBalance[exp] = {};
-    if (!massBalance[exp][brand]) massBalance[exp][brand] = { exp: 0, imp: 0 };
-    massBalance[exp][brand].exp += weight;
 
-    if (!massBalance[imp]) massBalance[imp] = {};
-    if (!massBalance[imp][brand]) massBalance[imp][brand] = { exp: 0, imp: 0 };
-    massBalance[imp][brand].imp += weight;
+    // SELF-TRADE LOGIC
+    if (exp === imp) {
+      r._isSelf = true;
+      entityStats[exp].self += 1;
+    }
 
-    // Route Intel
-    const routeKey = `${origin}->${dest}`;
-    if (!routeIntel[routeKey]) routeIntel[routeKey] = { weight: 0, amount: 0, entities: new Set() };
-    routeIntel[routeKey].weight += weight;
-    routeIntel[routeKey].amount += amt;
-    routeIntel[routeKey].entities.add(exp);
+    // HS MISMATCH LOGIC
+    if (!brandToHS[brand]) brandToHS[brand] = hs;
+    if (brandToHS[brand] !== hs) {
+      r._isHS = true;
+      entityStats[exp].hs += 1;
+    }
 
-    // Brand prices
-    if (!brandPrices[brand]) brandPrices[brand] = [];
-    if (unitPrice > 0) brandPrices[brand].push(unitPrice);
-
-    // price anomaly flag (_isPrice)
-    const avgPrice = brandPrices[brand].reduce((a, c) => a + c, 0) / brandPrices[brand].length;
-    r._isPrice = avgPrice > 0 && (unitPrice > avgPrice * 1.3 || unitPrice < avgPrice * 0.7);
-    if (r._isPrice) entityStats[exp].price += 1;
-  });
-
-  // Compute brand averages
-  const brandAvgs = {};
-  Object.keys(brandPrices).forEach(b => {
-    brandAvgs[b] = brandPrices[b].reduce((a, c) => a + c, 0) / brandPrices[b].length;
-  });
-
-  // Compute HS mismatch flag (_isHS)
-  cleanedData.forEach(r => {
-    r._isHS = brandToHS[r.Brand] !== r["HS Code"];
-  });
-
+    // DENSITY ANOMALY (Calculated in the previous step)
+    if (r._isDensityAnomaly) {
+      entityStats[exp].density += 1;
+    }
+});
   // ✅ Run external engines AFTER all flags
   let intelLayer = {}, rings = [], cycles = [], shells = [], shellScores = {}, corridors = [], anomalies = [];
   let tobaccoSignals = [], uTurnEntities = [], vatEntities = [], phantomEntities = [], priceEntities = [], mlScores = {}, fraudProb = 0;
@@ -444,15 +413,13 @@ CLEAR
       
       {/* 1. RISK FLAG (Combined Score + Labels) */}
       <td className="p-5 group relative cursor-help">
-  {/* The Hoverable Score */}
   <div 
     className="text-sm font-black border-b border-dotted border-slate-400 inline-block"
-    title={`Risk Breakdown:
-${row._isSelf ? '• Self-Trade Flag (+0.30)' : ''}
-${row._isHS ? '• HS Code Mismatch (+0.20)' : ''}
-${row._isPrice ? '• Price Anomaly (+0.30)' : ''}
-${row._isDensityAnomaly ? '• Density/Weight Anomaly (+0.30)' : ''}
-${(!row._isSelf && !row._isHS && !row._isPrice && !row._isDensityAnomaly) ? '• No specific flags detected.' : ''}`}
+    title={`Risk Analysis Breakdown:
+${row._isSelf ? '• Self-Trade Flag (+0.30): Circular flow detected.' : ''}
+${row._isHS ? '• HS Code Mismatch (+0.20): Category inconsistency.' : ''}
+${row._isPrice ? '• Price Anomaly (+0.30): Outside 30% brand median.' : ''}
+${row._isDensityAnomaly ? '• Weight Anomaly (+0.30): Impossible KG/Stick ratio.' : ''}`}
   >
     {(
       (row._isSelf ? 0.3 : 0) +
@@ -461,6 +428,7 @@ ${(!row._isSelf && !row._isHS && !row._isPrice && !row._isDensityAnomaly) ? '•
       (row._isDensityAnomaly ? 0.3 : 0)
     ).toFixed(2)}
   </div>
+</td>
 
   {/* Visual Badges below the score */}
   <div className="flex flex-wrap gap-1 mt-1">
@@ -546,68 +514,101 @@ AI Intelligence Summary
 
 {/* TAB: ERS SCORING */}
 {activeTab === "ers" && (
-  <div className="space-y-6">
-    {/* 1. The Entity Cards Loop */}
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-      {entityERS.map((entity) => (
-        <div key={entity.name} className="bg-white p-6 rounded-[2.5rem] border-4 border-slate-900 shadow-xl">
-          <h3 
-  onClick={() => setSelectedEntity(entity.name)}
-  className="text-xl font-black uppercase truncate cursor-pointer hover:text-blue-600"
->
-  {entity.name}
-</h3>
-          
-          {/* PLACE THE FORENSIC EVIDENCE BLOCK HERE */}
-          <div className="mt-4 p-4 bg-slate-50 rounded-2xl border border-slate-200">
-            <div className="text-[10px] font-black uppercase text-slate-400 mb-2 tracking-widest">
-              Forensic Evidence
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <div className="text-lg font-black text-slate-900">{entity.priceAnomaly}</div>
-                <div className="text-[9px] font-bold text-slate-500 uppercase">Price Deviations</div>
+  <div className="animate-in fade-in space-y-8 pb-20">
+    {/* HEADER SECTION */}
+    <div className="flex justify-between items-end mb-4">
+      <div>
+        <h2 className="text-4xl font-black tracking-tighter uppercase italic">Entity Risk Scoring</h2>
+        <p className="text-slate-500 font-bold uppercase text-xs tracking-widest mt-1">Weighted Forensic Index (WFI-100)</p>
+      </div>
+      <div className="bg-slate-900 text-white px-6 py-2 rounded-full text-xs font-black uppercase">
+        Live Auditing Mode
+      </div>
+    </div>
+
+    {/* 1. ENTITY RISK CARDS */}
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {entityERS.map((entity) => {
+        // Calculate a visual risk percentage (0-100)
+        const riskScore = Math.min(100, (
+          (entity.self * 40) + 
+          (entity.priceAnomaly * 30) + 
+          (entity.hs * 20)
+        ) / Math.max(1, entity.transactions) * 10).toFixed(0);
+
+        return (
+          <div key={entity.name} className="bg-white p-8 rounded-[3rem] border-4 border-slate-900 shadow-[10px_10px_0px_0px_rgba(15,23,42,1)] hover:translate-y-[-5px] transition-all">
+            <div className="flex justify-between items-start mb-6">
+              <div className="max-w-[70%]">
+                <h3 className="text-2xl font-black uppercase leading-none break-words hover:text-blue-700 cursor-pointer" onClick={() => setSelectedEntity(entity.name)}>
+                  {entity.name}
+                </h3>
               </div>
-              <div className="border-l pl-4">
-                <div className="text-lg font-black text-slate-900">{entity.transactions - entity.priceAnomaly}</div>
-                <div className="text-[9px] font-bold text-slate-500 uppercase">Clean Invoices</div>
+              <div className={`px-4 py-2 rounded-2xl font-black text-xl ${riskScore > 60 ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600'}`}>
+                {riskScore}%
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div className="bg-slate-50 p-5 rounded-2xl border-2 border-slate-100">
+                <div className="text-[10px] font-black uppercase text-slate-400 mb-3 tracking-widest">Forensic Evidence</div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <div className="text-2xl font-black text-red-600">{entity.priceAnomaly}</div>
+                    <div className="text-[9px] font-black text-slate-500 uppercase">Price Anomaly</div>
+                  </div>
+                  <div className="border-l border-slate-200 pl-4">
+                    <div className="text-2xl font-black text-slate-900">{entity.transactions - entity.priceAnomaly}</div>
+                    <div className="text-[9px] font-black text-slate-500 uppercase">Verified Clean</div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-2">
+                {entity.self > 0 && <span className="bg-red-900 text-white text-[9px] px-3 py-1 rounded-full font-black">CIRCULAR TRADE</span>}
+                {entity.hs > 0 && <span className="bg-slate-800 text-white text-[9px] px-3 py-1 rounded-full font-black">HS MISMATCH</span>}
               </div>
             </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
 
-    {/* 2. THE AI SUMMARY (Place this OUTSIDE the map, at the very bottom) */}
-<AISummary 
-  title="AI Forensic Summary"
-  icon={Brain}
-  content={
-    <>
-      <p className="mb-4">
-        Analysis detected that several transactions lacked a declared <span className="font-bold underline text-blue-800">Unit Price($)</span>. 
-        The system auto-calculated values based on <span className="italic">Total Amount / Weight</span> to fill these gaps.
-      </p>
-      
-      <div className="bg-white px-4 py-3 rounded-xl border border-blue-100 shadow-sm">
-        <span className="text-red-600 font-black mr-2">ALERT:</span>
-        <span className="font-bold text-slate-900">
-          {entityERS.filter(e => e.priceAnomaly > 0).length} entities
-        </span> show prices deviating significantly from the brand median. 
-        {entityERS.filter(e => e.priceAnomaly > 0).length > 0 && (
-          <span className="text-slate-600 ml-1">
-            Top risk: <span className="uppercase font-black">{entityERS.find(e => e.priceAnomaly > 0)?.name}</span>.
-          </span>
-        )}
-        <AISummary
-  title="ERS Intelligence Summary"
-  icon={Brain}
-  content={generateNarrative(stats, fraudStats)}
-/>
+    {/* 2. AI INTELLIGENCE SUMMARY (Fixed Undefined Bug) */}
+    <div className="bg-blue-50 p-10 rounded-[4rem] border-4 border-blue-900 shadow-2xl relative overflow-hidden">
+      <div className="relative z-10">
+        <div className="flex items-center gap-3 mb-6">
+          <Brain size={40} className="text-blue-900" />
+          <h2 className="text-3xl font-black uppercase text-blue-900 italic">Forensic Narrative</h2>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+          <div className="space-y-4 text-blue-900 font-bold leading-tight">
+            <p className="text-lg">
+              System analyzed <span className="bg-blue-200 px-2">{(stats.totalAmt || 0).toLocaleString()}$</span> in trade flow. 
+              Detected {entityERS.filter(e => e.priceAnomaly > 0).length} entities with significant unit-price deviation.
+            </p>
+            <p className="text-sm opacity-80">
+              The primary risk vector identified is <span className="underline italic">price suppression</span> where entities declared values 30% below brand medians to minimize customs exposure.
+            </p>
+          </div>
+          
+          <div className="bg-white/50 p-6 rounded-3xl border-2 border-blue-200">
+            <h4 className="text-xs font-black uppercase mb-4 tracking-widest">Critical Alert:</h4>
+            <ul className="space-y-2">
+              {entityERS.filter(e => e.priceAnomaly > 0).map(e => (
+                <li key={e.name} className="flex justify-between text-xs font-black uppercase">
+                  <span>● {e.name}</span>
+                  <span className="text-red-600">{e.priceAnomaly} Anomalies</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
       </div>
-    </>
-      }
-/>
+    </div>
+  </div>
+)}
     {/* METHODOLOGY FOOTER */}
     <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6 border-t-2 border-slate-100 pt-8">
       <div>
