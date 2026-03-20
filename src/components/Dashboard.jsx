@@ -224,8 +224,8 @@ const analyzeFraud = (rawData) => {
 
     // Populate HS Aggregation for the HS Tab
    const hsKey = `${r.Exporter}-${r["HS Code"]}-${r.Brand}`;
-  if (!hsAggResults[hsKey]) {
-    hsAggResults[hsKey] = { 
+  if (!hsAgg[hsKey]) {
+    hsAgg[hsKey] = { 
       entity: r.Exporter, 
       hs: r["HS Code"], 
       brand: r.Brand, 
@@ -233,8 +233,8 @@ const analyzeFraud = (rawData) => {
       amount: 0 
     };
   }
-  hsAggResults[hsKey].count++;
-  hsAggResults[hsKey].amount += (r["Amount($)"] || 0);
+  hsAgg[hsKey].count++;
+  hsAgg[hsKey].amount += (r["Amount($)"] || 0);
 });
 
   const brandBaselines = {}; 
