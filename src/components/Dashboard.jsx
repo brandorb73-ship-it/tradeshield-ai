@@ -658,103 +658,96 @@ AI Intelligence Summary
 
 {activeTab === "self" && (
   <div className="animate-in fade-in space-y-8">
-    {/* 1. HEADER STATS */}
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-      <div className="bg-red-700 p-8 rounded-[3rem] text-white shadow-2xl border-b-8 border-red-900">
-        <div className="text-[10px] font-black uppercase opacity-80 tracking-widest">Circular Trade Volume</div>
-        <div className="text-5xl font-black mt-2">
+    {/* 1. HEADER STATS - Compact Version */}
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="bg-red-700 p-6 rounded-[2rem] text-white shadow-xl border-b-4 border-red-900">
+        <div className="text-[9px] font-black uppercase opacity-80 tracking-widest">Circular Trade Volume</div>
+        <div className="text-3xl font-black mt-1">
           ${(stats.totalCircularVolume || 0).toLocaleString()}
-        </div>
-        <div className="text-xs font-bold mt-4 bg-red-800/50 inline-block px-3 py-1 rounded-full">
-          Total potential tax leakage/wash trade detected
         </div>
       </div>
       
-      <div className="bg-slate-900 p-8 rounded-[3rem] text-white shadow-2xl md:col-span-2 flex items-center justify-between border-b-8 border-slate-950">
+      <div className="bg-slate-900 p-6 rounded-[2rem] text-white shadow-xl md:col-span-2 flex items-center justify-between border-b-4 border-slate-950">
         <div>
-          <div className="text-[10px] font-black uppercase text-blue-400 tracking-widest">Risk Entities Identified</div>
-          <div className="text-4xl font-black mt-2">
+          <div className="text-[9px] font-black uppercase text-blue-400 tracking-widest">Risk Entities Identified</div>
+          <div className="text-3xl font-black mt-1">
             {Object.keys(stats.selfTradeData || {}).length} Unique Actors
           </div>
         </div>
-        <div className="bg-slate-800 p-4 rounded-full">
-          {/* Safety check for the icon */}
-          {typeof AlertCircle !== 'undefined' ? (
-            <AlertCircle size={40} className="text-red-500" />
-          ) : (
-            <ShieldAlert size={40} className="text-red-500" />
-          )}
+        <div className="bg-slate-800 p-3 rounded-full">
+          <AlertCircle size={28} className="text-red-500" />
         </div>
       </div>
     </div>
 
-   {/* 2. ENTITY BREAKDOWN GRID */}
-<div className="space-y-6">
-  {Object.entries(stats.selfTradeData || {}).sort((a,b) => b[1].amount - a[1].amount).map(([entity, data]) => (
-    <div key={entity} className="bg-white border-4 border-slate-900 rounded-[2.5rem] overflow-hidden shadow-xl">
-      {/* Entity Header */}
-      <div className="bg-slate-900 p-5 flex justify-between items-center text-white">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-red-600 rounded-full flex items-center justify-center font-black">{entity.charAt(0)}</div>
-          <div>
-            <div className="text-[10px] text-slate-400 font-black uppercase">Forensic Entity ID</div>
-            <div className="font-black text-lg leading-tight uppercase">{entity}</div>
+    {/* 2. ENTITY BREAKDOWN GRID */}
+    <div className="space-y-6">
+      {Object.entries(stats.selfTradeData || {}).sort((a,b) => b[1].amount - a[1].amount).map(([entity, data]) => (
+        <div key={entity} className="bg-white border-4 border-slate-900 rounded-[2.5rem] overflow-hidden shadow-xl">
+          {/* Entity Header */}
+          <div className="bg-slate-900 p-5 flex justify-between items-center text-white">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-red-600 rounded-full flex items-center justify-center font-black">{entity.charAt(0)}</div>
+              <div>
+                <div className="text-[10px] text-slate-400 font-black uppercase">Forensic Entity ID</div>
+                <div className="font-black text-xl leading-tight uppercase tracking-tight">{entity}</div>
+              </div>
+            </div>
+            <div className="bg-red-600 text-[10px] px-3 py-1 rounded-full font-black">CRITICAL RISK</div>
           </div>
-        </div>
-        <div className="bg-red-600 text-[10px] px-3 py-1 rounded-full font-black">CRITICAL RISK</div>
-      </div>
 
-      {/* NEW: Risk & Network Analysis Section */}
-      <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-12 border-b-2 border-slate-100">
-        <div>
-          <h3 className="text-blue-600 font-black text-xs uppercase mb-4 tracking-widest">Risk Analysis</h3>
-          <div className="bg-red-50 border-2 border-red-100 rounded-3xl p-6">
-            <div className="text-red-800 font-black text-sm mb-2 uppercase">CRITICAL: CIRCULAR TRADE DETECTED</div>
-            <p className="text-xs text-red-700 leading-relaxed font-bold">
-              Entity is shipping goods to itself. This is a primary indicator of <span className="underline">VAT Carousel Fraud</span> or <span className="underline">Trade-Based Money Laundering</span> to artificially inflate company turnover.
-            </p>
-          </div>
-        </div>
+          {/* Risk & Network Analysis Section */}
+          <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-12 border-b-2 border-slate-100">
+            <div>
+              <h3 className="text-blue-600 font-black text-[11px] uppercase mb-4 tracking-widest">Risk Analysis</h3>
+              <div className="bg-red-50 border-2 border-red-100 rounded-3xl p-6">
+                <div className="text-red-800 font-black text-sm mb-2 uppercase">CRITICAL: CIRCULAR TRADE DETECTED</div>
+                <p className="text-[13px] text-red-700 leading-relaxed font-bold">
+                  Entity is shipping goods to itself. This is a primary indicator of <span className="underline">VAT Carousel Fraud</span> or <span className="underline">Trade-Based Money Laundering</span>.
+                </p>
+              </div>
+            </div>
 
-        <div>
-          <h3 className="text-blue-600 font-black text-xs uppercase mb-4 tracking-widest">Network Footprint</h3>
-          <div className="flex flex-wrap gap-2 mb-6">
-            {data.countries?.map(c => (
-              <span key={c} className="bg-slate-900 text-white text-[9px] font-black px-3 py-1.5 rounded-full uppercase">
-                {c}
-              </span>
-            ))}
+            <div>
+              <h3 className="text-blue-600 font-black text-[11px] uppercase mb-4 tracking-widest">Network Footprint</h3>
+              <div className="flex flex-wrap gap-2 mb-6">
+                {(data.countries || []).map(c => (
+                  <span key={c} className="bg-slate-900 text-white text-[11px] font-black px-4 py-2 rounded-full uppercase tracking-wide">
+                    {c}
+                  </span>
+                ))}
+              </div>
+              <div className="text-sm font-black text-slate-800 leading-relaxed">
+                <span className="text-slate-400 uppercase text-[10px] block mb-1">Associated Brands:</span>
+                {data.brands?.join(', ')}
+              </div>
+            </div>
           </div>
-          <div className="text-xs font-bold text-slate-600 leading-relaxed">
-            <span className="text-slate-400 uppercase text-[10px] block mb-1">Associated Brands:</span>
-            {data.brands?.join(', ')}
-          </div>
-        </div>
-      </div>
 
-      {/* Footer Financials */}
-      <div className="px-8 py-6 bg-slate-50 flex flex-wrap justify-between items-center gap-4">
-        <div className="flex gap-8">
-          <div>
-            <div className="text-[9px] font-black uppercase text-slate-400">Circular Amount</div>
-            <div className="text-xl font-black text-red-700">${data.amount.toLocaleString()}</div>
-          </div>
-          <div>
-            <div className="text-[9px] font-black uppercase text-slate-400">Net Weight (KG)</div>
-            <div className="text-xl font-black text-slate-900">{data.weight.toLocaleString()}</div>
+          {/* Footer Financials - Bigger Font Focus */}
+          <div className="px-8 py-8 bg-slate-50 flex flex-wrap justify-between items-center gap-4">
+            <div className="flex gap-12">
+              <div>
+                <div className="text-[10px] font-black uppercase text-slate-400 mb-1">Circular Amount</div>
+                <div className="text-4xl font-black text-red-700 tracking-tighter">${data.amount.toLocaleString()}</div>
+              </div>
+              <div>
+                <div className="text-[10px] font-black uppercase text-slate-400 mb-1">Net Weight (KG)</div>
+                <div className="text-4xl font-black text-slate-900 tracking-tighter">{data.weight.toLocaleString()}</div>
+              </div>
+            </div>
+            <button 
+              onClick={() => { setActiveFilter('self'); setActiveTab('audit'); }}
+              className="bg-white border-4 border-slate-900 px-8 py-3 rounded-2xl text-[12px] font-black hover:bg-slate-900 hover:text-white transition-all flex items-center gap-2 shadow-lg"
+            >
+              VIEW AUDIT TRAIL <ArrowRight size={16} strokeWidth={3}/>
+            </button>
           </div>
         </div>
-        <button 
-          onClick={() => { setActiveFilter('self'); setActiveTab('audit'); }}
-          className="bg-white border-2 border-slate-900 px-6 py-2 rounded-xl text-[10px] font-black hover:bg-slate-900 hover:text-white transition-all flex items-center gap-2"
-        >
-          VIEW AUDIT TRAIL <ArrowRight size={14}/>
-        </button>
-      </div>
+      ))}
     </div>
-  ))}
-</div>
-
+  </div>
+)}
     {/* 3. AI SUMMARY FOR SELF TRADE */}
     {Object.keys(stats.selfTradeData || {}).length > 0 && (
       <AISummary
