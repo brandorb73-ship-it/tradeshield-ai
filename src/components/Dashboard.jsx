@@ -28,7 +28,7 @@ import { calculateShellScore } from "../analytics/shellProbability";
 import { detectTradeCorridors } from "../analytics/corridorHeatmap";
 import mlScore from "../analytics/mlAnomaly"; 
 import detectInvoiceMismatch from "../analytics/invoiceCheck";
-import { HSTab } from './Tabs/HSTab.js';
+import { HSTab } from './Tabs/HSTab.jsx';
 import { MassBalanceTab } from './components/Tabs/MassBalanceTab.js';
 import { generateForensicReport } from '../utils/forensics.js';
 
