@@ -443,17 +443,33 @@ CLEAR
     <tr key={i} className={`${row._isSelf ? 'bg-red-50' : 'hover:bg-slate-50'} transition-colors`}>
       
       {/* 1. RISK FLAG (Combined Score + Labels) */}
-      <td className="p-5">
-        <div className="text-sm font-black">
-          {((row._isSelf ? 0.3 : 0) + (row._isHS ? 0.2 : 0) + (row._isPrice ? 0.3 : 0) + (row._isDensityAnomaly ? 0.3 : 0)).toFixed(2)}
-        </div>
-        <div className="flex flex-wrap gap-1 mt-1">
-          {row._isSelf && <span className="bg-red-700 text-white text-[10px] px-2 py-1 rounded">SELF</span>}
-          {row._isHS && <span className="bg-orange-600 text-white text-[10px] px-2 py-1 rounded">HS</span>}
-          {row._isPrice && <span className="bg-purple-700 text-white text-[10px] px-2 py-1 rounded">PRICE</span>}
-          {row._isDensityAnomaly && <span className="bg-yellow-600 text-white text-[10px] px-2 py-1 rounded">DENSITY</span>}
-        </div>
-      </td>
+      <td className="p-5 group relative cursor-help">
+  {/* The Hoverable Score */}
+  <div 
+    className="text-sm font-black border-b border-dotted border-slate-400 inline-block"
+    title={`Risk Breakdown:
+${row._isSelf ? '• Self-Trade Flag (+0.30)' : ''}
+${row._isHS ? '• HS Code Mismatch (+0.20)' : ''}
+${row._isPrice ? '• Price Anomaly (+0.30)' : ''}
+${row._isDensityAnomaly ? '• Density/Weight Anomaly (+0.30)' : ''}
+${(!row._isSelf && !row._isHS && !row._isPrice && !row._isDensityAnomaly) ? '• No specific flags detected.' : ''}`}
+  >
+    {(
+      (row._isSelf ? 0.3 : 0) +
+      (row._isHS ? 0.2 : 0) +
+      (row._isPrice ? 0.3 : 0) +
+      (row._isDensityAnomaly ? 0.3 : 0)
+    ).toFixed(2)}
+  </div>
+
+  {/* Visual Badges below the score */}
+  <div className="flex flex-wrap gap-1 mt-1">
+    {row._isSelf && <span className="bg-red-700 text-white text-[10px] px-2 py-1 rounded">SELF</span>}
+    {row._isHS && <span className="bg-orange-600 text-white text-[10px] px-2 py-1 rounded">HS</span>}
+    {row._isPrice && <span className="bg-purple-700 text-white text-[10px] px-2 py-1 rounded">PRICE</span>}
+    {row._isDensityAnomaly && <span className="bg-yellow-600 text-white text-[10px] px-2 py-1 rounded">DENSITY</span>}
+  </div>
+</td>
 
       {/* 2. DATE */}
       <td className="p-5 text-sm">{row.Date}</td>
