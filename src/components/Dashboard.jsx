@@ -28,7 +28,7 @@ import { calculateShellScore } from "../analytics/shellProbability";
 import { detectTradeCorridors } from "../analytics/corridorHeatmap";
 import mlScore from "../analytics/mlAnomaly"; 
 import detectInvoiceMismatch from "../analytics/invoiceCheck";
-import { HSTab } from './components/Tabs/HSTab.js';
+import { HSTab } from './Tabs/HSTab.js';
 import { MassBalanceTab } from './components/Tabs/MassBalanceTab.js';
 import { generateForensicReport } from '../utils/forensics.js';
 
@@ -223,13 +223,19 @@ const analyzeFraud = (rawData) => {
     brandTotals[brand].amount += r["Amount($)"];
 
     // Populate HS Aggregation for the HS Tab
-    const hsKey = `${r.Exporter}-${r["HS Code"]}`;
-    if (!hsAgg[hsKey]) {
-      hsAgg[hsKey] = { entity: r.Exporter, hs: r["HS Code"], brand: r.Brand, count: 0, amount: 0 };
-    }
-    hsAgg[hsKey].count++;
-    hsAgg[hsKey].amount += r["Amount($)"];
-  });
+   const hsKey = `${r.Exporter}-${r["HS Code"]}-${r.Brand}`;
+  if (!hsAggResults[hsKey]) {
+    hsAggResults[hsKey] = { 
+      entity: r.Exporter, 
+      hs: r["HS Code"], 
+      brand: r.Brand, 
+      count: 0, 
+      amount: 0 
+    };
+  }
+  hsAggResults[hsKey].count++;
+  hsAggResults[hsKey].amount += (r["Amount($)"] || 0);
+});
 
   const brandBaselines = {}; 
   Object.keys(brandTotals).forEach(b => {
