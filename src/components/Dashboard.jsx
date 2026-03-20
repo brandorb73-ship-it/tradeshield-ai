@@ -514,11 +514,11 @@ AI Intelligence Summary
 {/* TAB: ERS SCORING */}
 {activeTab === "ers" && (
   <div className="space-y-6 pb-20">
+    {/* 1. ENTITY CARDS */}
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       {entityERS.map((entity) => (
         <div key={entity.name} className="bg-white p-8 rounded-[2.5rem] border-4 border-slate-900 shadow-xl">
           <h3 className="text-xl font-black uppercase truncate mb-4">{entity.name}</h3>
-          
           <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200">
             <div className="text-[10px] font-black uppercase text-slate-400 mb-3 tracking-widest">Risk Evidence</div>
             <div className="grid grid-cols-2 gap-4">
@@ -536,8 +536,8 @@ AI Intelligence Summary
       ))}
     </div>
 
-    {/* FIXED AI SUMMARY SECTION */}
-    <div className="bg-blue-50 p-8 rounded-[3rem] border-4 border-blue-900 mt-10">
+    {/* 2. AI FORENSIC SUMMARY */}
+    <div className="bg-blue-50 p-8 rounded-[2.5rem] border-4 border-blue-900 mt-10">
       <div className="flex items-center gap-3 mb-4 text-blue-900">
         <Brain size={32} />
         <h2 className="text-2xl font-black uppercase italic">AI Forensic Intelligence</h2>
@@ -549,34 +549,33 @@ AI Intelligence Summary
       <div className="bg-white/50 p-6 rounded-2xl border-2 border-blue-200">
          <span className="text-red-600 font-black mr-2">AUDIT PRIORITY:</span>
          <span className="font-bold text-slate-800">
-           Immediate review required for {entityERS.sort((a,b) => b.priceAnomaly - a.priceAnomaly)[0]?.name}.
+           Immediate review required for weight-based price anomalies.
          </span>
       </div>
     </div>
-  </div>
-)}
-    {/* METHODOLOGY FOOTER */}
-    <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6 border-t-2 border-slate-100 pt-8">
+
+    {/* 3. METHODOLOGY FOOTER (Now inside the Tab) */}
+    <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6 border-t-2 border-slate-200 pt-8">
       <div>
         <h4 className="text-[10px] font-black uppercase text-slate-400 mb-2 tracking-widest">What is ERS?</h4>
         <p className="text-xs text-slate-600 leading-relaxed">
-          <strong>Entity Risk Scoring</strong> is a weighted forensic index (0-100) that aggregates suspicious trade patterns like self-trading, HS mismatches, and price manipulation.
+          <strong>Entity Risk Scoring</strong> aggregates suspicious patterns like self-trading and price manipulation.
         </p>
       </div>
       <div>
         <h4 className="text-[10px] font-black uppercase text-slate-400 mb-2 tracking-widest">Brand Median Logic</h4>
         <p className="text-xs text-slate-600 leading-relaxed">
-          The system calculates a global baseline price for each brand by auditing the <strong>Total Value vs Total Weight</strong> across all shipments in the current dataset.
+          The system calculates baseline prices by auditing <strong>Total Value vs Total Weight</strong> for each brand.
         </p>
       </div>
       <div>
         <h4 className="text-[10px] font-black uppercase text-slate-400 mb-2 tracking-widest">Anomaly Detection</h4>
         <p className="text-xs text-slate-600 leading-relaxed">
-          Transactions are flagged if the unit price deviates by <strong>±30%</strong> from the brand median.
+          Transactions are flagged if the unit price deviates by <strong>±30%</strong> from the weight-based brand median.
         </p>
       </div>
     </div>
-</div>
+  </div>
 )}
           
           {/* TAB: MASS BALANCE */}
