@@ -149,15 +149,15 @@ const tradeLinks = useMemo(() => {
       }
     });
   };
-
 const analyzeFraud = (rawData) => {
+  // 1. Helper for strict number parsing
   const parseVal = (v) => {
-    if (!v) return 0;
-    const n = parseFloat(v.toString().replace(/[^0-9.]/g, ""));
+    if (v === undefined || v === null) return 0;
+    const n = parseFloat(v.toString().replace(/,/g, "").replace(/[^0-9.-]/g, ""));
     return isNaN(n) ? 0 : n;
   };
 
-  // 1. Preprocess & normalize
+  // 2. Preprocess & Normalize Data
   const cleanedData = rawData.map((r) => {
     const row = {};
     Object.keys(r).forEach((k) => {
@@ -165,10 +165,10 @@ const analyzeFraud = (rawData) => {
       row[key] = typeof r[k] === "string" ? r[k].trim() : r[k];
     });
 
-    const weight = parseFloat(row["Weight(Kg)"]?.toString().replace(/,/g, "")) || 0;
-    const amount = parseFloat(row["Amount($)"]?.toString().replace(/,/g, "")) || 0;
+    const weight = parseVal(row["Weight(Kg)"]);
+    const amount = parseVal(row["Amount($)"]);
     const pricePerKg = weight > 0 ? amount / weight : 0;
-    const rawQty = parseFloat(row["Quantity"]?.toString().replace(/,/g, "")) || 0;
+    const rawQty = parseVal(row["Quantity"]);
     const unit = (row["Quantity Unit"] || "").toUpperCase();
     
     let kgPerStick = 0;
@@ -179,6 +179,7 @@ const analyzeFraud = (rawData) => {
     if (rawQty > 0 && (isStickUnit || isPackUnit)) {
         const totalSticks = isPackUnit ? rawQty * 20 : rawQty;
         kgPerStick = weight / totalSticks;
+        // Forensic density threshold for tobacco sticks
         isDensityAnomaly = kgPerStick > 0.0011 || kgPerStick < 0.0006;
     }
 
@@ -190,33 +191,41 @@ const analyzeFraud = (rawData) => {
       "HS Code": row["HS Code"] || "UNKNOWN",
       "Amount($)": amount,
       "Weight(Kg)": weight,
+      Quantity: rawQty,
       _pricePerKg: pricePerKg,
       _kgPerStick: kgPerStick,
       _isDensityAnomaly: isDensityAnomaly,
-      _isSelf: (row["Exporter"] === row["Importer"] && row["Exporter"] !== "UNKNOWN"),
+      _isSelf: (row["Exporter"] === row["Importer"] && row["Exporter"] !== "UNKNOWN" && row["Exporter"] !== ""),
     };
   });
 
-  // 2. Initialize aggregates
+  // 3. Initialize Forensic Aggregates
   const entityStats = {};
   const brandToHS = {};
   const brandTotals = {};
   const selfTradeData = {}; 
+  const hsAgg = {};
   let totalWeight = 0;      
-  let totalAmt = 0;         
+  let totalAmt = 0;          
   let totalCircularVolume = 0; 
 
-  // --- PASS 1: BRAND BASES & GLOBAL TOTALS ---
+  // --- PASS 1: GLOBAL TOTALS & BRAND BASELINES ---
   cleanedData.forEach(r => {
     const brand = r.Brand || "UNKNOWN";
-    
-    // Financial Accumulation (Fixes $0 issue)
     totalAmt += r["Amount($)"];
     totalWeight += r["Weight(Kg)"];
 
     if (!brandTotals[brand]) brandTotals[brand] = { weight: 0, amount: 0 };
     brandTotals[brand].weight += r["Weight(Kg)"];
     brandTotals[brand].amount += r["Amount($)"];
+
+    // Populate HS Aggregation for the HS Tab
+    const hsKey = `${r.Exporter}-${r["HS Code"]}`;
+    if (!hsAgg[hsKey]) {
+      hsAgg[hsKey] = { entity: r.Exporter, hs: r["HS Code"], brand: r.Brand, count: 0, amount: 0 };
+    }
+    hsAgg[hsKey].count++;
+    hsAgg[hsKey].amount += r["Amount($)"];
   });
 
   const brandBaselines = {}; 
@@ -231,27 +240,25 @@ const analyzeFraud = (rawData) => {
     const brand = r.Brand;
     const hs = r["HS Code"];
 
-    // A. Price Logic
+    // A. Price Deviation
     const unitPrice = r._pricePerKg;
     const median = brandBaselines[brand] || 0;
     r._isPrice = median > 0 && (unitPrice > median * 1.3 || unitPrice < median * 0.7);
 
-    // B. HS Mismatch Logic
+    // B. HS Consistency Check
     if (!brandToHS[brand]) brandToHS[brand] = hs;
     r._isHS = brandToHS[brand] !== hs;
 
-    // C. Self-Trade Accumulation (For the new Tab)
+    // C. Circular Trade Accumulation
     if (r._isSelf) {
-      if (!selfTradeData[exp]) {
-        selfTradeData[exp] = { amount: 0, weight: 0, count: 0 };
-      }
+      if (!selfTradeData[exp]) selfTradeData[exp] = { amount: 0, weight: 0, count: 0 };
       selfTradeData[exp].amount += r["Amount($)"];
       selfTradeData[exp].weight += r["Weight(Kg)"];
       selfTradeData[exp].count += 1;
       totalCircularVolume += r["Amount($)"];
     }
 
-    // D. Entity Statistics
+    // D. Build Entity Risk Profiles
     [exp, imp].forEach(e => {
       if (!entityStats[e]) {
         entityStats[e] = { 
@@ -263,61 +270,51 @@ const analyzeFraud = (rawData) => {
 
     entityStats[exp].isExporter = true;
     entityStats[imp].isImporter = true;
-    entityStats[exp].transactions += 1;
-    entityStats[imp].transactions += 1;
+    entityStats[exp].transactions++;
+    entityStats[imp].transactions++;
 
-    if (r._isPrice) { entityStats[exp].priceAnomaly += 1; entityStats[imp].priceAnomaly += 1; }
-    if (r._isSelf) { entityStats[exp].self += 1; }
-    if (r._isHS) { entityStats[exp].hs += 1; entityStats[imp].hs += 1; }
-    if (r._isDensityAnomaly) { entityStats[exp].density += 1; entityStats[imp].density += 1; }
+    if (r._isPrice) { entityStats[exp].priceAnomaly++; entityStats[imp].priceAnomaly++; }
+    if (r._isSelf) { entityStats[exp].self++; }
+    if (r._isHS) { entityStats[exp].hs++; entityStats[imp].hs++; }
+    if (r._isDensityAnomaly) { entityStats[exp].density++; entityStats[imp].density++; }
   });
 
-  // 3. Update State (ENSURE THIS IS CLOSED)
-  setStats({
-    totalAmt: totalAmt, 
-    totalWeight: totalWeight,
-    totalCircularVolume: totalCircularVolume,
-    selfTradeData: selfTradeData,
-    brandBaselines: brandBaselines,
-    entityStats: entityStats,
-    routeIntel: detectTradeCorridors(cleanedData)
-  });
+  // --- PASS 3: EXTERNAL ENGINES ---
+  let intelLayer = {}, rings = [], cycles = [], shells = [], corridors = {}, mlScores = {}, fraudProb = 0;
 
-setData(cleanedData);
+  try { intelLayer = runIntelEngine(cleanedData); } catch(e){ console.error("Intel Engine Error:", e); }
+  try { rings = detectFraudRings(cleanedData); } catch(e){ console.error("Ring Engine Error:", e); }
+  try { cycles = detectUTurnTrade(cleanedData); } catch(e){ console.error("Cycle Engine Error:", e); }
+  try { corridors = detectTradeCorridors(cleanedData); } catch(e) { console.error("Corridor Engine Error:", e); }
+  try { mlScores = runFraudEngine(cleanedData); } catch(e){ console.error("ML Engine Error:", e); }
+  try { fraudProb = calculateFraudProbability(cleanedData, intelLayer); } catch(e){ console.error("Prob Engine Error:", e); }
 
-  // 1️⃣ Run external engines (NOW INSIDE THE FUNCTION)
-  let intelLayer = {}, rings = [], cycles = [], shells = [], shellScores = {};
-  let corridors = [], anomalies = [], tobaccoSignals = [], mlScores = {}, fraudProb = 0;
-
-  try { intelLayer = runIntelEngine(cleanedData); } catch(e){ console.error(e); }
-  try { rings = detectFraudRings(cleanedData); } catch(e){ console.error(e); }
-  try { cycles = detectUTurnTrade(cleanedData); } catch(e){ console.error(e); }
-  try { corridors = detectTradeCorridors(cleanedData); } catch(e) { console.error(e); }
-  try { mlScores = runFraudEngine(cleanedData); } catch(e){ console.error(e); }
-  try { fraudProb = calculateFraudProbability(cleanedData, intelLayer); } catch(e){ console.error(e); }
-
-  // 2️⃣ Apply external scores to entityStats
+  // Merge external risk scores into EntityStats
   Object.keys(entityStats).forEach(e => {
     if (mlScores[e]) entityStats[e].mlRisk = mlScores[e];
     if (rings.find(r => r?.includes?.(e))) entityStats[e].ringScore = (entityStats[e].ringScore || 0) + 1;
   });
 
-  // 3️⃣ SINGLE Final State Update
+  // --- FINAL STATE SYNC ---
+  // Update main data state
   setData(cleanedData);
   setIntel(intelLayer);
+
+  // Update unified stats object
   setStats({
-    totalWeight,      // These will now have the actual sums
-    totalAmt,         // These will now have the actual sums
-    totalCircularVolume, // From your self-trade logic
-    selfTradeData,    // From your self-trade logic
+    totalWeight,
+    totalAmt,
+    totalCircularVolume,
+    selfTradeData,
     entityStats,
-    routeIntel: corridors, // This fixes the Map Tab $0 issue
+    routeIntel: corridors, // Fixed: Passes to Map Tab
     brandBaselines,
+    hsAgg,                // Fixed: Passes to HS Tab
     rings,
     cycles,
     fraudProbability: fraudProb
   });
-}; 
+};
   return (
     <div className="min-h-screen bg-[#f8fafc] text-slate-900 pb-20 font-sans">
       <nav className="bg-[#020617] text-white py-6 px-8 shadow-2xl border-b-4 border-blue-600 sticky top-0 z-50">
@@ -423,6 +420,7 @@ CLEAR
         </thead>
         <tbody className="divide-y-2 divide-slate-100 text-slate-800 font-bold">
           {filteredData.map((row, i) => {
+            // Risk Calculation logic preserved
             const sScore = row._isSelf ? 0.3 : 0;
             const hScore = row._isHS ? 0.2 : 0;
             const pScore = row._isPrice ? 0.3 : 0;
@@ -446,7 +444,6 @@ CLEAR
                     {totalRisk.toFixed(2)}
                   </div>
                   <div className="flex flex-wrap gap-1 mt-2">
-                    {/* FIXED: Removed entity name from this badge */}
                     {row._isSelf && <span className="bg-red-700 text-white text-[8px] px-1.5 py-0.5 rounded">SELF</span>}
                     {row._isHS && <span className="bg-orange-600 text-white text-[8px] px-1.5 py-0.5 rounded">HS</span>}
                     {row._isPrice && <span className="bg-purple-700 text-white text-[8px] px-1.5 py-0.5 rounded">PRICE</span>}
@@ -458,34 +455,36 @@ CLEAR
 
                 <td className="p-5">
                   <div className="text-sm font-black uppercase truncate max-w-[140px]">{row.Exporter}</div>
-                  {/* FONT FIX: Importer Name */}
                   <div className="text-[11px] text-blue-800 font-black uppercase mt-0.5 italic">To: {row.Importer}</div>
                 </td>
 
                 <td className="p-5">
                   <div className="text-sm font-black uppercase">{row.Brand}</div>
-                  {/* FONT FIX: HS Code Darker/Larger */}
                   <div className="text-[11px] text-slate-900 font-black mt-0.5">HS: {row["HS Code"]}</div>
                 </td>
 
                 <td className="p-5">
-                  {/* FONT FIX: Route Larger/Darker */}
                   <div className="text-[11px] font-black uppercase flex items-center gap-1 text-slate-700">
                     {row["Origin Country"]} <ArrowRight size={10} strokeWidth={3}/> {row["Destination Country"]}
                   </div>
                 </td>
 
-                <td className="p-5 text-right font-black text-slate-900">{row._numWeight?.toLocaleString()}</td>
-                <td className="p-5 text-right font-black text-slate-900">${row._numAmount?.toLocaleString()}</td>
+                {/* KEY FIX: Using normalized numeric keys from analyzeFraud */}
+                <td className="p-5 text-right font-black text-slate-900">
+                  {(row["Weight(Kg)"] || 0).toLocaleString(undefined, {minimumFractionDigits: 1})}
+                </td>
+                <td className="p-5 text-right font-black text-slate-900">
+                  ${(row["Amount($)"] || 0).toLocaleString()}
+                </td>
 
                 <td className="p-5 text-right">
-                  <div className="text-sm font-black text-slate-700">{row._numQty?.toLocaleString()}</div>
+                  <div className="text-sm font-black text-slate-700">{(row.Quantity || 0).toLocaleString()}</div>
                   <div className="text-[8px] font-black text-blue-500 uppercase">{row["Quantity Unit"]}</div>
                 </td>
 
                 <td className="p-5 text-right text-xs font-mono">
                   {row["Quantity Unit"]?.toLowerCase().includes('stick') 
-                    ? (row._numWeight / row._numQty).toFixed(4) 
+                    ? (row["Weight(Kg)"] / row.Quantity).toFixed(4) 
                     : "-"}
                 </td>
               </tr>
@@ -495,8 +494,13 @@ CLEAR
         <tfoot className="bg-slate-100 border-t-4 border-slate-900 font-black text-slate-900">
           <tr>
             <td colSpan="5" className="p-6 text-right text-lg uppercase">Audit Totals:</td>
-            <td className="p-6 text-right text-xl">{visibleTotals.weight.toFixed(2)} KG</td>
-            <td className="p-6 text-right text-2xl text-red-700">${visibleTotals.amount.toLocaleString()}</td>
+            <td className="p-6 text-right text-xl">
+               {/* Ensure visibleTotals is calculated using filteredData amount/weight */}
+               {(filteredData.reduce((acc, curr) => acc + (curr["Weight(Kg)"] || 0), 0)).toFixed(2)} KG
+            </td>
+            <td className="p-6 text-right text-2xl text-red-700">
+               ${(filteredData.reduce((acc, curr) => acc + (curr["Amount($)"] || 0), 0)).toLocaleString()}
+            </td>
             <td></td>
             <td></td>
           </tr>
@@ -505,7 +509,6 @@ CLEAR
     </div>
   </div>
 )}
-
           {/* TAB: FINAL ANALYSIS (AI SUMMARY) */}
           {activeTab==="final" && (
 
