@@ -177,9 +177,29 @@ const analyzeFraud = (rawData) => {
     else amountBuckets.large++;
 
     // Initialize entity stats
-    [exp, imp].forEach(e => {
-      if (!entityStats[e]) entityStats[e] = { self: 0, hs: 0, price: 0, total: 0, transactions: 0, priceAnomaly: 0, density: 0, mlRisk: 0, shellRisk: 0, ringScore: 0, cycleScore: 0, uTurns: 0 };
-    });
+const entityStats = {};
+data.forEach(row => {
+  const exp = row.Exporter || "Unknown";
+  const imp = row.Importer || "Unknown";
+
+  [exp, imp].forEach(e => {
+    if (!entityStats[e]) {
+      entityStats[e] = {
+        self: 0,
+        hs: 0,
+        price: 0,
+        density: 0,
+        total: 0,
+        transactions: 0,
+        priceAnomaly: 0,
+        mlRisk: 0,
+        shellRisk: 0,
+        ringScore: 0,
+        cycleScore: 0,
+        uTurns: 0,
+      };
+    }
+  });
     entityStats[exp].total += 1;
     entityStats[exp].transactions += 1;
 
@@ -398,57 +418,75 @@ CLEAR
     <th className="p-5 text-right">KG/Stick</th>
   </tr>
 </thead>
-                        <tbody className="divide-y-2 divide-slate-100 text-slate-800 font-bold">
+                     <tbody className="divide-y-2 divide-slate-100 text-slate-800 font-bold">
   {filteredData.map((row, i) => (
     <tr key={i} className={`${row._isSelf ? 'bg-red-50' : 'hover:bg-slate-50'} transition-colors`}>
-<td>
-  {((row._isPrice ? 0.25 : 0) +
-    (row._isSelf ? 0.25 : 0) +
-    (row._isHS ? 0.2 : 0) +
-    (row._isDensityAnomaly ? 0.3 : 0)
-  ).toFixed(2)}
-</td>
+      
+      {/* ✅ Risk Score */}
+      <td className="p-5 text-sm font-black">
+        {(
+          (row._isSelf ? 0.3 : 0) +
+          (row._isHS ? 0.2 : 0) +
+          (row._isPrice ? 0.3 : 0) +
+          (row._isDensityAnomaly ? 0.3 : 0)
+        ).toFixed(2)}
+      </td>
+
+      {/* ✅ Flags */}
       <td className="p-5">
         <div className="flex gap-1">
           {row._isSelf && <span className="bg-red-700 text-white text-[10px] px-2 py-1 rounded">SELF</span>}
           {row._isHS && <span className="bg-orange-600 text-white text-[10px] px-2 py-1 rounded">HS</span>}
           {row._isPrice && <span className="bg-purple-700 text-white text-[10px] px-2 py-1 rounded">PRICE</span>}
-          {row._isDensityAnomaly && (
-  <span className="bg-yellow-600 text-white text-[10px] px-2 py-1 rounded">
-    DENSITY
-  </span>
-)}
+          {row._isDensityAnomaly && <span className="bg-yellow-600 text-white text-[10px] px-2 py-1 rounded">DENSITY</span>}
         </div>
       </td>
+
+      {/* ✅ Date */}
       <td className="p-5 text-sm">{row.Date}</td>
+
+      {/* ✅ Entity */}
       <td className="p-5">
         <div className="text-base font-black uppercase">{row.Exporter}</div>
         <div className="text-xs text-blue-700 uppercase">To: {row.Importer}</div>
       </td>
+
+      {/* ✅ Brand / HS */}
       <td className="p-5">
         <div className="text-base uppercase">{row.Brand}</div>
         <div className="text-xs text-slate-700">HS: {row['HS Code']}</div>
       </td>
+
+      {/* ✅ Route */}
       <td className="p-5">
         <div className="text-xs flex items-center gap-1 uppercase">
           <MapPin size={12}/> {row['Origin Country']} &rarr; {row['Destination Country']}
         </div>
       </td>
+
+      {/* ✅ Weight */}
       <td className="p-5 text-right text-base font-black">{row['Weight(Kg)']}</td>
+
+      {/* ✅ Amount */}
       <td className="p-5 text-right text-lg font-black text-slate-900">
         ${(row['Amount($)'] || 0).toLocaleString()}
       </td>
-<td className={`p-5 text-right text-sm ${
-  row._isDensityAnomaly ? "text-red-600 font-black" : ""
-}`}>
-  {row._kgPerStick && row._kgPerStick > 0
-    ? row._kgPerStick.toFixed(4)
-    : "-"}
-</td>
+
+      {/* ✅ KG/Stick */}
+      <td className="p-5 text-right text-sm">
+        {row._kgPerStick && row._kgPerStick > 0
+          ? row._kgPerStick.toFixed(4)
+          : "-"}
+      </td>
+
+      {/* ✅ Optional Red Highlight if stick > threshold */}
+      <td className={`p-5 text-right text-sm ${row._kgPerStick > 0.001 ? "text-red-600 font-bold" : ""}`}>
+        {row._kgPerStick ? row._kgPerStick.toFixed(4) : "-"}
+      </td>
+
     </tr>
   ))}
 </tbody>
-
 <tfoot className="bg-slate-100 border-t-4 border-slate-900 font-black text-slate-900 uppercase">
   <tr>
     <td colSpan="5" className="p-6 text-right text-xl">
@@ -603,98 +641,140 @@ AI Intelligence Summary
               </div>
           )}
 
-          {/* TAB: SELF TRADE */}
-{activeTab==="self" && (() => {
+{/* TAB: SELF TRADE */}
+{activeTab === "self" && (() => {
+  let importsWeight = 0,
+    importsQty = 0,
+    importsAmt = 0;
+  let exportsWeight = 0,
+    exportsQty = 0,
+    exportsAmt = 0;
 
-let importsWeight=0, importsQty=0, importsAmt=0;
-let exportsWeight=0, exportsQty=0, exportsAmt=0;
+  const importCountries = new Set();
+  const exportCountries = new Set();
+  const brands = new Set();
+  const entityFraudMap = {};
 
-const importCountries = new Set();
-const exportCountries = new Set();
-const brands = new Set();
+  // Prepare Sankey / Network data
+  const nodes = new Set();
+  const links = [];
 
-data.forEach(r=>{
-  if(r.Exporter === r.Importer){
+  data.forEach(r => {
+    if (r.Exporter === r.Importer) {
+      const w = parseFloat(r["Weight(Kg)"] || 0);
+      const q = parseFloat(r["Quantity"] || 0);
+      const a = parseFloat(r["Amount($)"] || 0);
 
-    const w = parseFloat(r["Weight(Kg)"]||0);
-    const q = parseFloat(r["Quantity"]||0);
-    const a = parseFloat(r["Amount($)"]||0);
+      importsWeight += w;
+      importsQty += q;
+      importsAmt += a;
 
-    importsWeight += w;
-    importsQty += q;
-    importsAmt += a;
+      exportsWeight += w;
+      exportsQty += q;
+      exportsAmt += a;
 
-    exportsWeight += w;
-    exportsQty += q;
-    exportsAmt += a;
+      importCountries.add(r["Origin Country"]);
+      exportCountries.add(r["Destination Country"]);
+      brands.add(r.Brand);
 
-    importCountries.add(r["Origin Country"]);
-    exportCountries.add(r["Destination Country"]);
-    brands.add(r.Brand);
-  }
-});
+      const score =
+        (r._isSelf ? 0.3 : 0) +
+        (r._isHS ? 0.2 : 0) +
+        (r._isPrice ? 0.3 : 0) +
+        (r._isDensityAnomaly ? 0.3 : 0);
 
-const mismatch = Math.abs(importsWeight - exportsWeight);
-const fraudScore = mismatch > 0 ? "HIGH RISK" : "CIRCULAR TRADE";
+      if (!entityFraudMap[r.Exporter]) entityFraudMap[r.Exporter] = 0;
+      entityFraudMap[r.Exporter] += score;
 
-return (
+      // Build Sankey/Network nodes & links
+      nodes.add(r.Exporter);
+      nodes.add(r.Importer);
+      links.push({
+        source: r.Exporter,
+        target: r.Importer,
+        value: w, // weight can be used as link thickness
+        fraudScore: score.toFixed(2)
+      });
+    }
+  });
 
-<div className="bg-white p-6 rounded-xl shadow">
+  const mismatch = Math.abs(importsWeight - exportsWeight);
+  const fraudScore = mismatch > 0 ? "HIGH RISK" : "CIRCULAR TRADE";
+  const densityAnomalies = data.filter(
+    r => r._isDensityAnomaly && r.Exporter === r.Importer
+  ).length;
 
-<h2 className="text-2xl font-bold mb-6">
-Self Trade Intelligence
-</h2>
+  const topEntities = Object.entries(entityFraudMap)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3)
+    .map(([e, score]) => `${e} (${score.toFixed(2)})`);
 
-<div className="grid grid-cols-2 gap-6">
+  const narrativeContent = `Detected ${data.filter(r => r._isSelf).length} circular trades. 
+Density anomalies: ${densityAnomalies}.
+Top risky entities: ${topEntities.join(", ")}.
+Brands involved: ${[...brands].slice(0, 5).join(", ")}.
+Countries involved: ${[...importCountries].slice(0, 5).join(", ")}`;
 
-<div>
-<h3 className="font-bold">Imports</h3>
-<div>Weight: {importsWeight.toFixed(2)}</div>
-<div>Quantity: {importsQty}</div>
-<div>Amount: ${importsAmt.toLocaleString()}</div>
-<div>Countries: {[...importCountries].join(", ")}</div>
-</div>
+  return (
+    <div className="bg-white p-6 rounded-xl shadow space-y-6">
+      <h2 className="text-2xl font-bold mb-4">Self Trade Intelligence</h2>
 
-<div>
-<h3 className="font-bold">Exports</h3>
-<div>Weight: {exportsWeight.toFixed(2)}</div>
-<div>Quantity: {exportsQty}</div>
-<div>Amount: ${exportsAmt.toLocaleString()}</div>
-<div>Countries: {[...exportCountries].join(", ")}</div>
-</div>
+      <div className="grid grid-cols-2 gap-6">
+        <div>
+          <h3 className="font-bold">Imports</h3>
+          <div>Weight: {importsWeight.toFixed(2)} KG</div>
+          <div>Quantity: {importsQty}</div>
+          <div>Amount: ${importsAmt.toLocaleString()}</div>
+          <div>Countries: {[...importCountries].join(", ")}</div>
+        </div>
+        <div>
+          <h3 className="font-bold">Exports</h3>
+          <div>Weight: {exportsWeight.toFixed(2)} KG</div>
+          <div>Quantity: {exportsQty}</div>
+          <div>Amount: ${exportsAmt.toLocaleString()}</div>
+          <div>Countries: {[...exportCountries].join(", ")}</div>
+        </div>
+      </div>
 
-</div>
+      <div className="mt-4">
+        <h3 className="font-bold">Brands Involved</h3>
+        <div className="text-sm">{[...brands].join(", ")}</div>
+      </div>
 
-<div className="mt-6">
+      <div className="mt-4">
+        <h3 className="font-bold">Conclusion</h3>
+        <div className="text-sm text-slate-700">
+          Mismatch: {mismatch.toFixed(2)} KG <br />
+          Flag: <b>{fraudScore}</b> <br />
+          Weighted fraud score: <b>{Object.values(entityFraudMap).reduce((a,b)=>a+b,0).toFixed(2)}</b> <br />
+          Density anomalies detected: {densityAnomalies}
+          <br />
+          Possible fraud:
+          <ul className="list-disc ml-6">
+            <li>Round-tripping</li>
+            <li>VAT carousel layering</li>
+            <li>Trade-based money laundering</li>
+          </ul>
+        </div>
+      </div>
 
-<h3 className="font-bold">Brands Involved</h3>
-<div className="text-sm">{[...brands].join(", ")}</div>
+      {/* AI Narrative Summary */}
+      <AISummary
+        title="Circular Trade & Fraud Insight"
+        icon={ArrowLeftRight}
+        content={narrativeContent}
+      />
 
-<h3 className="font-bold mt-4">Conclusion</h3>
-
-<div className="text-sm text-slate-700">
-
-Mismatch: {mismatch.toFixed(2)} KG  
-Flag: <b>{fraudScore}</b>  
-
-Possible fraud:
-• Round-tripping  
-• VAT carousel layering  
-• Trade-based money laundering  
-
-</div>
-
-</div>
-<AISummary
-  title="Circular Trade Insight"
-  icon={ArrowLeftRight}
-  content={`Detected ${data.filter(d=>d._isSelf).length} circular trades. Potential VAT carousel behavior.`}
-/>
-</div>
-
-);
-)}
-
+      {/* Sankey / Network Visualization */}
+      {links.length > 0 && (
+        <div className="mt-6">
+          <h3 className="font-bold mb-2">Self Trade Network Visualization</h3>
+          <NetworkGraph nodes={[...nodes]} links={links} />
+        </div>
+      )}
+    </div>
+  );
+})()}
           {/* TAB: FINANCIAL FORENSICS */}
 {activeTab === "finance" && (
 
