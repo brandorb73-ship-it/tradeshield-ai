@@ -740,15 +740,14 @@ AI Intelligence Summary
               onClick={() => { setActiveFilter('self'); setActiveTab('audit'); }}
               className="bg-white border-4 border-slate-900 px-8 py-3 rounded-2xl text-[12px] font-black hover:bg-slate-900 hover:text-white transition-all flex items-center gap-2 shadow-lg"
             >
-              VIEW AUDIT TRAIL <ArrowRight size={16} strokeWidth={3}/>
+VIEW AUDIT TRAIL <ArrowRight size={16} strokeWidth={3}/>
             </button>
           </div>
         </div>
       ))}
     </div>
-  </div>
-)}
-    {/* 3. AI SUMMARY FOR SELF TRADE */}
+
+    {/* 3. AI SUMMARY FOR SELF TRADE - Now correctly inside the "self" tab block */}
     {Object.keys(stats.selfTradeData || {}).length > 0 && (
       <AISummary
         title="Circular Trade Intel"
