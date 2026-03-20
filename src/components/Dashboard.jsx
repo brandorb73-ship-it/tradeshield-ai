@@ -815,30 +815,38 @@ AI Intelligence Summary
           {/* TAB: MAP INTEL */}
 {activeTab === "map" && (
   <div className="bg-slate-900 p-12 rounded-[4rem] text-white animate-in fade-in">
-      <h2 className="text-3xl font-black uppercase mb-10 flex items-center gap-4">
-          <Globe className="text-blue-500"/> Trade Corridor Density
-      </h2>
-      <div className="space-y-4">
-          {Object.entries(stats.routeIntel).map(([route, d]) => (
-              <div key={route} className="p-8 bg-slate-800 rounded-[2rem] border-2 border-slate-700 flex justify-between items-center">
-                  <div>
-                      <div className="text-3xl font-black uppercase tracking-tighter text-blue-400">{route}</div>
-                      <div className="flex gap-4 mt-2">
-                          {Array.from(d.entities).map(e => <span key={e} className="text-sm font-bold bg-slate-700 px-3 py-1 rounded text-slate-300">{e}</span>)}
-                      </div>
-                  </div>
-                  <div className="text-right">
-                      <div className="text-2xl font-black">${d.amount.toLocaleString()}</div>
-                      <div className="text-sm font-black text-slate-500 uppercase">{d.weight.toFixed(0)} KG TRANSACTED</div>
-                  </div>
-              </div>
-          ))}
-      </div>
-    <AISummary
-  title="Corridor Intelligence"
-  icon={Globe}
-  content={`High-volume corridors detected: ${Object.keys(stats.routeIntel).length}`}
- />
+    <h2 className="text-3xl font-black uppercase mb-10 flex items-center gap-4">
+      <Globe className="text-blue-500"/> Trade Corridor Density
+    </h2>
+    <div className="space-y-4">
+      {/* ADDED A NULL CHECK HERE (stats.routeIntel || {}) */}
+      {Object.entries(stats.routeIntel || {}).map(([route, d]) => (
+        <div key={route} className="p-8 bg-slate-800 rounded-[2rem] border-2 border-slate-700 flex justify-between items-center hover:border-blue-500 transition-all">
+          <div>
+            <div className="text-3xl font-black uppercase tracking-tighter text-blue-400">{route}</div>
+            <div className="flex flex-wrap gap-2 mt-3">
+              {Array.from(d.entities || []).map(e => (
+                <span key={e} className="text-[10px] font-black bg-slate-700 px-3 py-1 rounded-full text-slate-300 border border-slate-600">
+                  {e}
+                </span>
+              ))}
+            </div>
+          </div>
+          <div className="text-right">
+            <div className="text-2xl font-black text-white">${d.amount.toLocaleString()}</div>
+            <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{d.weight.toFixed(0)} KG TRANSACTED</div>
+          </div>
+        </div>
+      ))}
+    </div>
+    
+    <div className="mt-10">
+      <AISummary
+        title="Corridor Intelligence"
+        icon={Globe}
+        content={`High-volume corridors detected: ${Object.keys(stats.routeIntel || {}).length}. Major liquidity flow identified in the ${Object.keys(stats.routeIntel || {})[0] || 'primary'} route.`}
+      />
+    </div>
   </div>
 )}
 
