@@ -390,9 +390,7 @@ CLEAR
     <th className="p-5">Route</th>
     <th className="p-5 text-right">Weight (Kg)</th>
     <th className="p-5 text-right">Amount ($)</th>
-    <td className="p-5 text-right text-sm">
-  {row._kgPerStick?.toFixed(3)} KG/stick
-</td>
+    <th className="p-5 text-right">KG/Stick</th>
   </tr>
 </thead>
                         <tbody className="divide-y-2 divide-slate-100 text-slate-800 font-bold">
@@ -428,6 +426,16 @@ CLEAR
       <td className="p-5 text-right text-lg font-black text-slate-900">
         ${(row['Amount($)'] || 0).toLocaleString()}
       </td>
+      <td className="p-5 text-right text-sm">
+  {row._kgPerStick && row._kgPerStick > 0
+    ? row._kgPerStick.toFixed(4)
+    : "-"}
+</td>
+      <td className={`p-5 text-right text-sm ${
+  row._kgPerStick > 0.001 ? "text-red-600 font-bold" : ""
+}`}>
+  {row._kgPerStick ? row._kgPerStick.toFixed(4) : "-"}
+</td>
     </tr>
   ))}
 </tbody>
