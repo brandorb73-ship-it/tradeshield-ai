@@ -135,30 +135,42 @@ const analyzeFraud = (rawData) => {
     row[key] = typeof r[k] === "string" ? r[k].trim() : r[k];
   });
 
-  const weight = parseFloat(row["Weight(Kg)"]) || 0;
-  const amount = parseFloat(row["Amount($)"].toString().replace(/,/g, "")) || 0;
-  const declaredPrice = parseFloat(row["Unit Price($)"]) || 0;
-  const effPrice = declaredPrice > 0 ? declaredPrice : weight > 0 ? amount / weight : 0;
+  // 1. Master Financials (Strips commas for safety)
+  const weight = parseFloat(row["Weight(Kg)"]?.toString().replace(/,/g, "")) || 0;
+  const amount = parseFloat(row["Amount($)"]?.toString().replace(/,/g, "")) || 0;
+  const pricePerKg = weight > 0 ? amount / weight : 0;
 
-  const qty = parseFloat(row["Quantity"]) || 0; // ✅ safe, inside map
-   const kgPerStick = qty > 0 ? weight / qty : 0;
+  // 2. Quantity Normalization
+  const rawQty = parseFloat(row["Quantity"]?.toString().replace(/,/g, "")) || 0;
+  const unit = (row["Quantity Unit"] || "").toUpperCase();
+  
+  let kgPerStick = 0;
+  let isDensityAnomaly = false;
+
+  // 3. Conditional Density Check (Only if units are Sticks/Packs)
+  const isStickUnit = unit.includes("STICK") || unit.includes("PCS") || unit.includes("PC");
+  const isPackUnit = unit.includes("PACK");
+
+  if (rawQty > 0 && (isStickUnit || isPackUnit)) {
+      const totalSticks = isPackUnit ? rawQty * 20 : rawQty;
+      kgPerStick = weight / totalSticks;
+      // Flag if 1 stick is heavier than 1.1g or lighter than 0.6g
+      isDensityAnomaly = kgPerStick > 0.0011 || kgPerStick < 0.0006;
+  }
 
   return {
+    ...row, // Keeps original fields
     Exporter: row["Exporter"] || "UNKNOWN",
     Importer: row["Importer"] || "UNKNOWN",
     Brand: row["Brand"] || "UNKNOWN",
     "HS Code": row["HS Code"] || "UNKNOWN",
     "Amount($)": amount,
     "Weight(Kg)": weight,
-    Quantity: qty,               // store qty
-    _declaredPrice: declaredPrice,
-    _effectivePrice: effPrice,
-    "Origin Country": row["Origin Country"] || "UNKNOWN",
-    "Destination Country": row["Destination Country"] || "UNKNOWN",
-    Date: row["Date"] || "",
+    _pricePerKg: pricePerKg,
+    _kgPerStick: kgPerStick,
+    _isDensityAnomaly: isDensityAnomaly,
     _isSelf: row["Exporter"] === row["Importer"],
-   _kgPerStick: kgPerStick,
-  _isDensityAnomaly: kgPerStick > 0.001 || kgPerStick < 0.0005
+    // Note: _isHS and _isPrice are calculated later in your loop
   };
 });
 
