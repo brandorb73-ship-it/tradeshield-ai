@@ -131,6 +131,7 @@ const analyzeFraud = (rawData) => {
   const effPrice = declaredPrice > 0 ? declaredPrice : weight > 0 ? amount / weight : 0;
 
   const qty = parseFloat(row["Quantity"]) || 0; // ✅ safe, inside map
+   const kgPerStick = qty > 0 ? weight / qty : 0;
 
   return {
     Exporter: row["Exporter"] || "UNKNOWN",
