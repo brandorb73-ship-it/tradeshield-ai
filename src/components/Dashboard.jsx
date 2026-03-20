@@ -323,18 +323,19 @@ const analyzeFraud = (rawData) => {
   setIntel(intelLayer);
 
   // 3. Update unified stats object (Note the change to selfTradeData)
-  setStats({
+setStats({
     totalWeight,
     totalAmt,
     totalCircularVolume,
-    selfTradeData: finalSelfTradeData, // <--- Use the converted version here
-    entityStats,
-    routeIntel: corridors,
-    brandBaselines,
-    hsAgg,
-    rings,
-    cycles,
-    fraudProbability: fraudProb
+    selfTradeData: finalSelfTradeData,
+    entityStats: entityStats || {}, // Ensure this is never null
+    routeIntel: corridors || {},   // Fallback for Map tab
+    brandBaselines: brandBaselines || {},
+    hsAgg: hsAgg || {},           // Fallback for HS tab
+    massBalanceData: intelLayer?.massBalance || {}, // <--- FIX FOR GREY SCREEN
+    rings: rings || [],
+    cycles: cycles || [],
+    fraudProbability: fraudProb || 0
   });
 };
   return (
@@ -742,6 +743,12 @@ AI Intelligence Summary
             >
 VIEW AUDIT TRAIL <ArrowRight size={16} strokeWidth={3}/>
             </button>
+            <button 
+  onClick={() => generateForensicReport(entity, data)}
+  className="bg-red-50 text-red-700 border-2 border-red-200 px-6 py-3 rounded-2xl text-[12px] font-black hover:bg-red-700 hover:text-white transition-all flex items-center gap-2"
+>
+  DOWNLOAD FORENSIC DOSSIER
+</button>
           </div>
         </div>
       ))}
