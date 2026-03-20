@@ -27,7 +27,10 @@ import detectShellCompanies from "../analytics/shellDetector";
 import { calculateShellScore } from "../analytics/shellProbability";
 import { detectTradeCorridors } from "../analytics/corridorHeatmap";
 import mlScore from "../analytics/mlAnomaly"; 
-import detectInvoiceMismatch from "../analytics/invoiceCheck"; 
+import detectInvoiceMismatch from "../analytics/invoiceCheck";
+import { MapTab } from './components/Tabs/MapTab';
+import { HSTab } from './components/Tabs/HSTab';
+import { MassBalanceTab } from './components/Tabs/MassBalanceTab';
 
 const generateNarrative = (stats, fraudStats, entityERS) => {
   if (!stats || !entityERS) return "Awaiting trade data for forensic analysis...";
