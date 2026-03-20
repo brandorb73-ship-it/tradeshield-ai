@@ -431,11 +431,6 @@ CLEAR
     ? row._kgPerStick.toFixed(4)
     : "-"}
 </td>
-      <td className={`p-5 text-right text-sm ${
-  row._kgPerStick > 0.001 ? "text-red-600 font-bold" : ""
-}`}>
-  {row._kgPerStick ? row._kgPerStick.toFixed(4) : "-"}
-</td>
     </tr>
   ))}
 </tbody>
