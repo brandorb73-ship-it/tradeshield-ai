@@ -30,7 +30,7 @@ import mlScore from "../analytics/mlAnomaly";
 import detectInvoiceMismatch from "../analytics/invoiceCheck";
 import { HSTab } from './Tabs/HSTab.jsx';
 import { MassBalanceTab } from './components/Tabs/MassBalanceTab.jsx';
-import { generateForensicReport } from '../utils/forensics.jsx';
+import { generateForensicReport } from '../utils/forensics.js';
 
 const generateNarrative = (stats, fraudStats, entityERS) => {
   if (!stats || !entityERS) return "Awaiting trade data for forensic analysis...";
