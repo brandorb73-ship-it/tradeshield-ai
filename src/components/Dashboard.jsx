@@ -408,74 +408,73 @@ CLEAR
   </tr>
 </thead>
   <tbody className="divide-y-2 divide-slate-100 text-slate-800 font-bold">
-  {filteredData.map((row, i) => (
-    <tr key={i} className={`${row._isSelf ? 'bg-red-50' : 'hover:bg-slate-50'} transition-colors`}>
-      
-      {/* 1. RISK FLAG (Combined Score + Labels) */}
-      <td className="p-5 group relative cursor-help">
-  <div 
-    className="text-sm font-black border-b border-dotted border-slate-400 inline-block"
-    title={`Risk Analysis Breakdown:
-${row._isSelf ? '• Self-Trade Flag (+0.30): Circular flow detected.' : ''}
-${row._isHS ? '• HS Code Mismatch (+0.20): Category inconsistency.' : ''}
-${row._isPrice ? '• Price Anomaly (+0.30): Outside 30% brand median.' : ''}
-${row._isDensityAnomaly ? '• Weight Anomaly (+0.30): Impossible KG/Stick ratio.' : ''}`}
-  >
-    {(
-      (row._isSelf ? 0.3 : 0) +
-      (row._isHS ? 0.2 : 0) +
-      (row._isPrice ? 0.3 : 0) +
-      (row._isDensityAnomaly ? 0.3 : 0)
-    ).toFixed(2)}
-  </div>
-</td>
+ {filteredData.map((row, i) => (
+  <tr key={i} className={`${row._isSelf ? 'bg-red-50' : 'hover:bg-slate-50'} transition-colors border-b border-slate-100`}>
+    
+    {/* 1. RISK FLAG + HOVER */}
+    <td className="p-5">
+      <div 
+        className="text-sm font-black border-b border-dotted border-slate-400 inline-block cursor-help"
+        title={`Risk Breakdown:
+${row._isSelf ? '• Self-Trade (+0.30)' : ''}
+${row._isHS ? '• HS Mismatch (+0.20)' : ''}
+${row._isPrice ? '• Price Anomaly (+0.30)' : ''}
+${row._isDensityAnomaly ? '• Density Anomaly (+0.30)' : ''}`}
+      >
+        {(
+          (row._isSelf ? 0.3 : 0) +
+          (row._isHS ? 0.2 : 0) +
+          (row._isPrice ? 0.3 : 0) +
+          (row._isDensityAnomaly ? 0.3 : 0)
+        ).toFixed(2)}
+      </div>
+      <div className="flex flex-wrap gap-1 mt-1">
+        {row._isSelf && <span className="bg-red-700 text-white text-[10px] px-2 py-1 rounded">SELF</span>}
+        {row._isHS && <span className="bg-orange-600 text-white text-[10px] px-2 py-1 rounded">HS</span>}
+        {row._isPrice && <span className="bg-purple-700 text-white text-[10px] px-2 py-1 rounded">PRICE</span>}
+        {row._isDensityAnomaly && <span className="bg-yellow-600 text-white text-[10px] px-2 py-1 rounded">DENSITY</span>}
+      </div>
+    </td>
 
-  {/* Visual Badges below the score */}
-  <div className="flex flex-wrap gap-1 mt-1">
-    {row._isSelf && <span className="bg-red-700 text-white text-[10px] px-2 py-1 rounded">SELF</span>}
-    {row._isHS && <span className="bg-orange-600 text-white text-[10px] px-2 py-1 rounded">HS</span>}
-    {row._isPrice && <span className="bg-purple-700 text-white text-[10px] px-2 py-1 rounded">PRICE</span>}
-    {row._isDensityAnomaly && <span className="bg-yellow-600 text-white text-[10px] px-2 py-1 rounded">DENSITY</span>}
-  </div>
-</td>
+    {/* 2. DATE */}
+    <td className="p-5 text-sm font-bold text-slate-500">{row.Date}</td>
 
-      {/* 2. DATE */}
-      <td className="p-5 text-sm">{row.Date}</td>
+    {/* 3. ENTITY */}
+    <td className="p-5">
+      <div className="text-sm font-black uppercase">{row.Exporter}</div>
+      <div className="text-[10px] text-blue-700 font-bold uppercase">To: {row.Importer}</div>
+    </td>
 
-      {/* 3. ENTITY INVOLVED */}
-      <td className="p-5">
-        <div className="text-base font-black uppercase">{row.Exporter}</div>
-        <div className="text-xs text-blue-700 uppercase">To: {row.Importer}</div>
-      </td>
+    {/* 4. BRAND / HS */}
+    <td className="p-5">
+      <div className="text-sm font-black uppercase">{row.Brand}</div>
+      <div className="text-[10px] text-slate-500 font-bold">HS: {row["HS Code"]}</div>
+    </td>
 
-      {/* 4. BRAND / HS */}
-      <td className="p-5">
-        <div className="text-base uppercase">{row.Brand}</div>
-        <div className="text-xs text-slate-700">HS: {row['HS Code']}</div>
-      </td>
+    {/* 5. ROUTE */}
+    <td className="p-5">
+      <div className="text-[10px] font-black uppercase flex items-center gap-1">
+        {row["Origin Country"]} <ArrowRight size={10}/> {row["Destination Country"]}
+      </div>
+    </td>
 
-      {/* 5. ROUTE */}
-      <td className="p-5">
-        <div className="text-xs flex items-center gap-1 uppercase">
-          <MapPin size={12}/> {row['Origin Country']} &rarr; {row['Destination Country']}
-        </div>
-      </td>
+    {/* 6. WEIGHT (KG) */}
+    <td className="p-5 text-right font-black text-slate-900">
+      {row["Weight(Kg)"]?.toLocaleString()}
+    </td>
 
-      {/* 6. WEIGHT (KG) */}
-      <td className="p-5 text-right text-base font-black">{row['Weight(Kg)']}</td>
+    {/* 7. AMOUNT ($) */}
+    <td className="p-5 text-right font-black text-slate-900">
+      ${(row["Amount($)"] || 0).toLocaleString()}
+    </td>
 
-      {/* 7. AMOUNT ($) */}
-      <td className="p-5 text-right text-lg font-black text-slate-900">
-        ${(row['Amount($)'] || 0).toLocaleString()}
-      </td>
+    {/* 8. KG/STICK */}
+    <td className={`p-5 text-right text-xs font-mono ${row._isDensityAnomaly ? 'text-red-600 font-bold' : 'text-slate-400'}`}>
+      {row._kgPerStick > 0 ? row._kgPerStick.toFixed(4) : "-"}
+    </td>
+  </tr>
+))}
 
-      {/* 8. KG/STICK */}
-      <td className={`p-5 text-right text-sm ${row._kgPerStick > 0.001 ? "text-red-600 font-bold" : ""}`}>
-        {row._kgPerStick ? row._kgPerStick.toFixed(4) : "-"}
-      </td>
-
-    </tr>
-  ))}
 </tbody>
 <tfoot className="bg-slate-100 border-t-4 border-slate-900 font-black text-slate-900 uppercase">
   <tr>
@@ -514,97 +513,44 @@ AI Intelligence Summary
 
 {/* TAB: ERS SCORING */}
 {activeTab === "ers" && (
-  <div className="animate-in fade-in space-y-8 pb-20">
-    {/* HEADER SECTION */}
-    <div className="flex justify-between items-end mb-4">
-      <div>
-        <h2 className="text-4xl font-black tracking-tighter uppercase italic">Entity Risk Scoring</h2>
-        <p className="text-slate-500 font-bold uppercase text-xs tracking-widest mt-1">Weighted Forensic Index (WFI-100)</p>
-      </div>
-      <div className="bg-slate-900 text-white px-6 py-2 rounded-full text-xs font-black uppercase">
-        Live Auditing Mode
-      </div>
-    </div>
-
-    {/* 1. ENTITY RISK CARDS */}
+  <div className="space-y-6 pb-20">
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      {entityERS.map((entity) => {
-        // Calculate a visual risk percentage (0-100)
-        const riskScore = Math.min(100, (
-          (entity.self * 40) + 
-          (entity.priceAnomaly * 30) + 
-          (entity.hs * 20)
-        ) / Math.max(1, entity.transactions) * 10).toFixed(0);
-
-        return (
-          <div key={entity.name} className="bg-white p-8 rounded-[3rem] border-4 border-slate-900 shadow-[10px_10px_0px_0px_rgba(15,23,42,1)] hover:translate-y-[-5px] transition-all">
-            <div className="flex justify-between items-start mb-6">
-              <div className="max-w-[70%]">
-                <h3 className="text-2xl font-black uppercase leading-none break-words hover:text-blue-700 cursor-pointer" onClick={() => setSelectedEntity(entity.name)}>
-                  {entity.name}
-                </h3>
+      {entityERS.map((entity) => (
+        <div key={entity.name} className="bg-white p-8 rounded-[2.5rem] border-4 border-slate-900 shadow-xl">
+          <h3 className="text-xl font-black uppercase truncate mb-4">{entity.name}</h3>
+          
+          <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200">
+            <div className="text-[10px] font-black uppercase text-slate-400 mb-3 tracking-widest">Risk Evidence</div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <div className="text-2xl font-black text-red-600">{entity.priceAnomaly || 0}</div>
+                <div className="text-[9px] font-bold text-slate-500 uppercase">Price Anomaly</div>
               </div>
-              <div className={`px-4 py-2 rounded-2xl font-black text-xl ${riskScore > 60 ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600'}`}>
-                {riskScore}%
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              <div className="bg-slate-50 p-5 rounded-2xl border-2 border-slate-100">
-                <div className="text-[10px] font-black uppercase text-slate-400 mb-3 tracking-widest">Forensic Evidence</div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <div className="text-2xl font-black text-red-600">{entity.priceAnomaly}</div>
-                    <div className="text-[9px] font-black text-slate-500 uppercase">Price Anomaly</div>
-                  </div>
-                  <div className="border-l border-slate-200 pl-4">
-                    <div className="text-2xl font-black text-slate-900">{entity.transactions - entity.priceAnomaly}</div>
-                    <div className="text-[9px] font-black text-slate-500 uppercase">Verified Clean</div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex gap-2">
-                {entity.self > 0 && <span className="bg-red-900 text-white text-[9px] px-3 py-1 rounded-full font-black">CIRCULAR TRADE</span>}
-                {entity.hs > 0 && <span className="bg-slate-800 text-white text-[9px] px-3 py-1 rounded-full font-black">HS MISMATCH</span>}
+              <div className="border-l pl-4">
+                <div className="text-2xl font-black text-slate-900">{entity.transactions - (entity.priceAnomaly || 0)}</div>
+                <div className="text-[9px] font-bold text-slate-500 uppercase">Clean Invoices</div>
               </div>
             </div>
           </div>
-        );
-      })}
+        </div>
+      ))}
     </div>
 
-    {/* 2. AI INTELLIGENCE SUMMARY (Fixed Undefined Bug) */}
-    <div className="bg-blue-50 p-10 rounded-[4rem] border-4 border-blue-900 shadow-2xl relative overflow-hidden">
-      <div className="relative z-10">
-        <div className="flex items-center gap-3 mb-6">
-          <Brain size={40} className="text-blue-900" />
-          <h2 className="text-3xl font-black uppercase text-blue-900 italic">Forensic Narrative</h2>
-        </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-          <div className="space-y-4 text-blue-900 font-bold leading-tight">
-            <p className="text-lg">
-              System analyzed <span className="bg-blue-200 px-2">{(stats.totalAmt || 0).toLocaleString()}$</span> in trade flow. 
-              Detected {entityERS.filter(e => e.priceAnomaly > 0).length} entities with significant unit-price deviation.
-            </p>
-            <p className="text-sm opacity-80">
-              The primary risk vector identified is <span className="underline italic">price suppression</span> where entities declared values 30% below brand medians to minimize customs exposure.
-            </p>
-          </div>
-          
-          <div className="bg-white/50 p-6 rounded-3xl border-2 border-blue-200">
-            <h4 className="text-xs font-black uppercase mb-4 tracking-widest">Critical Alert:</h4>
-            <ul className="space-y-2">
-              {entityERS.filter(e => e.priceAnomaly > 0).map(e => (
-                <li key={e.name} className="flex justify-between text-xs font-black uppercase">
-                  <span>● {e.name}</span>
-                  <span className="text-red-600">{e.priceAnomaly} Anomalies</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
+    {/* FIXED AI SUMMARY SECTION */}
+    <div className="bg-blue-50 p-8 rounded-[3rem] border-4 border-blue-900 mt-10">
+      <div className="flex items-center gap-3 mb-4 text-blue-900">
+        <Brain size={32} />
+        <h2 className="text-2xl font-black uppercase italic">AI Forensic Intelligence</h2>
+      </div>
+      <p className="text-blue-900 font-bold text-lg mb-6 leading-tight">
+        Analysis detected trade flows totaling <span className="bg-blue-200 px-2">${totalAmt.toLocaleString()}</span>. 
+        {entityERS.filter(e => e.priceAnomaly > 0).length} entities show unit-price deviations exceeding 30%.
+      </p>
+      <div className="bg-white/50 p-6 rounded-2xl border-2 border-blue-200">
+         <span className="text-red-600 font-black mr-2">AUDIT PRIORITY:</span>
+         <span className="font-bold text-slate-800">
+           Immediate review required for {entityERS.sort((a,b) => b.priceAnomaly - a.priceAnomaly)[0]?.name}.
+         </span>
       </div>
     </div>
   </div>
