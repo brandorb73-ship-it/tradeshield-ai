@@ -3,7 +3,9 @@ import Papa from 'papaparse';
 import { 
   AlertTriangle, ShieldCheck, Activity, Globe, Link as LinkIcon, 
   TrendingUp, Search, BarChart3, ListFilter, ShieldAlert, FileText, 
-  BookOpen, Network, Zap, Percent, Scale, DownloadCloud, AlertOctagon, Layers, Calendar, MapPin, ArrowLeftRight, Info, DollarSign, Brain
+  BookOpen, Network, Zap, Percent, Scale, DownloadCloud, AlertOctagon, 
+  Layers, Calendar, MapPin, ArrowLeftRight, Info, DollarSign, Brain,
+  ArrowRight
 } from 'lucide-react';
 import "leaflet/dist/leaflet.css";
 import ShipmentLedger from "./ShipmentLedger";
@@ -28,6 +30,34 @@ import mlScore from "../analytics/mlAnomaly";
 import detectInvoiceMismatch from "../analytics/invoiceCheck"; 
 import generateNarrative from "../analytics/aiNarrative";
 
+const generateNarrative = (stats, fraudStats, entityERS) => {
+  if (!stats || !entityERS) return "Awaiting trade data for forensic analysis...";
+
+  const totalValue = (stats.totalAmt || 0).toLocaleString();
+  const highRiskEntities = entityERS.filter(e => e.priceAnomaly > 0).length;
+  const topVulnerable = entityERS.sort((a, b) => b.priceAnomaly - a.priceAnomaly)[0]?.name || "None";
+
+  return (
+    <div className="space-y-4">
+      <p>
+        The forensic engine audited a total trade volume of <span className="font-bold text-blue-900">${totalValue}</span>. 
+        By establishing a <span className="italic">Weight-Based Price Baseline</span> for each brand, we identified 
+        <span className="font-bold text-red-600"> {highRiskEntities} entities</span> showing significant price suppression.
+      </p>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+        <div className="p-3 bg-white/50 rounded-lg border border-blue-200">
+          <span className="text-[10px] font-black uppercase text-blue-400 block">Primary Risk Vector</span>
+          <span className="text-sm font-bold text-blue-900">Under-Invoicing (Value Manipulation)</span>
+        </div>
+        <div className="p-3 bg-white/50 rounded-lg border border-blue-200">
+          <span className="text-[10px] font-black uppercase text-blue-400 block">Highest Exposure</span>
+          <span className="text-sm font-bold text-red-700 uppercase">{topVulnerable}</span>
+        </div>
+      </div>
+    </div>
+  );
+};
 export default function Dashboard() {
   const [urlInput, setUrlInput] = useState("");
   const [data, setData] = useState([]);
@@ -192,8 +222,8 @@ const brandTotals = {};
 
 cleanedData.forEach(r => {
   const brand = r.Brand || "UNKNOWN";
-  const w = r["Weight(Kg)"] || 0;
-  const a = r["Amount($)"] || 0;
+  const w = parseFloat(r["Weight(Kg)"]?.toString().replace(/,/g, "")) || 0;
+  const a = parseFloat(r["Amount($)"]?.toString().replace(/,/g, "")) || 0;
   if (!brandTotals[brand]) brandTotals[brand] = { weight: 0, amount: 0 };
   brandTotals[brand].weight += w;
   brandTotals[brand].amount += a;
@@ -536,24 +566,12 @@ AI Intelligence Summary
       ))}
     </div>
 
-    {/* 2. AI FORENSIC SUMMARY */}
-    <div className="bg-blue-50 p-8 rounded-[2.5rem] border-4 border-blue-900 mt-10">
-      <div className="flex items-center gap-3 mb-4 text-blue-900">
-        <Brain size={32} />
-        <h2 className="text-2xl font-black uppercase italic">AI Forensic Intelligence</h2>
-      </div>
-      <p className="text-blue-900 font-bold text-lg mb-6 leading-tight">
-        Analysis detected trade flows totaling <span className="bg-blue-200 px-2">${totalAmt.toLocaleString()}</span>. 
-        {entityERS.filter(e => e.priceAnomaly > 0).length} entities show unit-price deviations exceeding 30%.
-      </p>
-      <div className="bg-white/50 p-6 rounded-2xl border-2 border-blue-200">
-         <span className="text-red-600 font-black mr-2">AUDIT PRIORITY:</span>
-         <span className="font-bold text-slate-800">
-           Immediate review required for weight-based price anomalies.
-         </span>
-      </div>
-    </div>
-
+  <AISummary
+  title="ERS Intelligence Summary"
+  icon={Brain}
+  // Make sure you pass entityERS here!
+  content={generateNarrative(stats, fraudStats, entityERS)} 
+/>
     {/* 3. METHODOLOGY FOOTER (Now inside the Tab) */}
     <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6 border-t-2 border-slate-200 pt-8">
       <div>
