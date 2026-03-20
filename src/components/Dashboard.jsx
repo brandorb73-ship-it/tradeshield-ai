@@ -469,17 +469,12 @@ CLEAR
                   >
                     {totalRisk.toFixed(2)}
                   </div>
-                  <div className="flex flex-col gap-1 mt-2">
-                    {row._isSelf && (
-                      <span className="bg-red-700 text-white text-[9px] px-2 py-1 rounded leading-tight uppercase">
-                        SELF: {row.Exporter}
-                      </span>
-                    )}
-                    <div className="flex gap-1">
-                      {row._isHS && <span className="bg-orange-600 text-white text-[8px] px-1.5 py-0.5 rounded">HS</span>}
-                      {row._isPrice && <span className="bg-purple-700 text-white text-[8px] px-1.5 py-0.5 rounded">PRICE</span>}
-                      {row._isDensityAnomaly && <span className="bg-yellow-600 text-white text-[8px] px-1.5 py-0.5 rounded">DENSITY</span>}
-                    </div>
+                  <div className="flex flex-wrap gap-1 mt-2">
+                    {/* FIXED: Removed entity name from this badge */}
+                    {row._isSelf && <span className="bg-red-700 text-white text-[8px] px-1.5 py-0.5 rounded">SELF</span>}
+                    {row._isHS && <span className="bg-orange-600 text-white text-[8px] px-1.5 py-0.5 rounded">HS</span>}
+                    {row._isPrice && <span className="bg-purple-700 text-white text-[8px] px-1.5 py-0.5 rounded">PRICE</span>}
+                    {row._isDensityAnomaly && <span className="bg-yellow-600 text-white text-[8px] px-1.5 py-0.5 rounded">DENSITY</span>}
                   </div>
                 </td>
 
@@ -487,27 +482,25 @@ CLEAR
 
                 <td className="p-5">
                   <div className="text-sm font-black uppercase truncate max-w-[140px]">{row.Exporter}</div>
+                  {/* FONT FIX: Importer Name */}
                   <div className="text-[11px] text-blue-800 font-black uppercase mt-0.5 italic">To: {row.Importer}</div>
                 </td>
 
                 <td className="p-5">
                   <div className="text-sm font-black uppercase">{row.Brand}</div>
+                  {/* FONT FIX: HS Code Darker/Larger */}
                   <div className="text-[11px] text-slate-900 font-black mt-0.5">HS: {row["HS Code"]}</div>
                 </td>
 
                 <td className="p-5">
+                  {/* FONT FIX: Route Larger/Darker */}
                   <div className="text-[11px] font-black uppercase flex items-center gap-1 text-slate-700">
                     {row["Origin Country"]} <ArrowRight size={10} strokeWidth={3}/> {row["Destination Country"]}
                   </div>
                 </td>
 
-                <td className="p-5 text-right font-black text-slate-900">
-                  {row._numWeight?.toLocaleString()}
-                </td>
-
-                <td className="p-5 text-right font-black text-slate-900">
-                  ${row._numAmount?.toLocaleString()}
-                </td>
+                <td className="p-5 text-right font-black text-slate-900">{row._numWeight?.toLocaleString()}</td>
+                <td className="p-5 text-right font-black text-slate-900">${row._numAmount?.toLocaleString()}</td>
 
                 <td className="p-5 text-right">
                   <div className="text-sm font-black text-slate-700">{row._numQty?.toLocaleString()}</div>
@@ -525,9 +518,7 @@ CLEAR
         </tbody>
         <tfoot className="bg-slate-100 border-t-4 border-slate-900 font-black text-slate-900">
           <tr>
-            <td colSpan="5" className="p-6 text-right text-lg uppercase">
-              {activeFilter !== 'all' ? `${activeFilter} Total:` : 'Total Audit Volume:'}
-            </td>
+            <td colSpan="5" className="p-6 text-right text-lg uppercase">Audit Totals:</td>
             <td className="p-6 text-right text-xl">{visibleTotals.weight.toFixed(2)} KG</td>
             <td className="p-6 text-right text-2xl text-red-700">${visibleTotals.amount.toLocaleString()}</td>
             <td></td>
