@@ -29,7 +29,7 @@ import { detectTradeCorridors } from "../analytics/corridorHeatmap";
 import mlScore from "../analytics/mlAnomaly"; 
 import detectInvoiceMismatch from "../analytics/invoiceCheck";
 import { HSTab } from './Tabs/HSTab.jsx';
-import { MassBalanceTab } from './components/Tabs/MassBalanceTab.jsx';
+import MassBalanceTab from "./Tabs/MassBalanceTab.jsx";
 import { generateForensicReport } from '../utils/forensics.js';
 
 const generateNarrative = (stats, fraudStats, entityERS) => {
