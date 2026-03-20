@@ -250,13 +250,24 @@ const analyzeFraud = (rawData) => {
     r._isHS = brandToHS[brand] !== hs;
 
     // C. Circular Trade Accumulation
-    if (r._isSelf) {
-      if (!selfTradeData[exp]) selfTradeData[exp] = { amount: 0, weight: 0, count: 0 };
-      selfTradeData[exp].amount += r["Amount($)"];
-      selfTradeData[exp].weight += r["Weight(Kg)"];
-      selfTradeData[exp].count += 1;
-      totalCircularVolume += r["Amount($)"];
-    }
+   if (r._isSelf) {
+  if (!selfTradeData[exp]) {
+    selfTradeData[exp] = { 
+      amount: 0, 
+      weight: 0, 
+      count: 0, 
+      countries: new Set(), // Using Sets to keep list unique
+      brands: new Set() 
+    };
+}
+  selfTradeData[exp].amount += r["Amount($)"];
+  selfTradeData[exp].weight += r["Weight(Kg)"];
+  selfTradeData[exp].count += 1;
+  selfTradeData[exp].countries.add(r["Origin Country"]);
+  selfTradeData[exp].countries.add(r["Destination Country"]);
+  selfTradeData[exp].brands.add(r.Brand);
+  totalCircularVolume += r["Amount($)"];
+}
 
     // D. Build Entity Risk Profiles
     [exp, imp].forEach(e => {
@@ -666,55 +677,72 @@ AI Intelligence Summary
       </div>
     </div>
 
-    {/* 2. ENTITY BREAKDOWN GRID */}
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      {Object.entries(stats.selfTradeData || {})
-        .sort((a, b) => b[1].amount - a[1].amount)
-        .map(([entity, data]) => (
-        <div key={entity} className="bg-white border-4 border-slate-900 rounded-[2.5rem] overflow-hidden shadow-xl hover:scale-[1.01] transition-transform">
-          <div className="bg-slate-900 p-5 flex justify-between items-center">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-red-600 rounded-full flex items-center justify-center text-white font-black">
-                {entity.charAt(0)}
-              </div>
-              <div>
-                <div className="text-xs text-slate-400 font-black uppercase">Forensic Entity ID</div>
-                <div className="text-white font-black text-lg leading-tight truncate max-w-[250px]">{entity}</div>
-              </div>
-            </div>
-            <div className="bg-red-600 text-white text-[10px] px-3 py-1 rounded-full font-black">
-              HIGH RISK
-            </div>
-          </div>
-          
-          <div className="p-8 grid grid-cols-2 gap-8">
-            <div>
-              <div className="text-[10px] font-black uppercase text-slate-400">Circular Amount</div>
-              <div className="text-2xl font-black text-red-700">${(data.amount || 0).toLocaleString()}</div>
-            </div>
-            <div>
-              <div className="text-[10px] font-black uppercase text-slate-400">Net Weight (KG)</div>
-              <div className="text-2xl font-black text-slate-900">{(data.weight || 0).toLocaleString()}</div>
-            </div>
-            <div className="col-span-2 pt-4 border-t-2 border-slate-100 flex justify-between items-center">
-              <div className="flex gap-2 items-center">
-                <span className="text-[10px] font-black text-slate-500 uppercase">Self-Trade Transactions:</span>
-                <span className="bg-slate-100 text-slate-900 px-3 py-1 rounded text-sm font-black">{data.count}</span>
-              </div>
-              <button 
-                onClick={() => {
-                  setActiveFilter('self');
-                  setActiveTab('audit');
-                }}
-                className="text-[10px] font-black text-blue-600 hover:underline flex items-center gap-1"
-              >
-                VIEW AUDIT TRAIL <ArrowRight size={12}/>
-              </button>
-            </div>
+   {/* 2. ENTITY BREAKDOWN GRID */}
+<div className="space-y-6">
+  {Object.entries(stats.selfTradeData || {}).sort((a,b) => b[1].amount - a[1].amount).map(([entity, data]) => (
+    <div key={entity} className="bg-white border-4 border-slate-900 rounded-[2.5rem] overflow-hidden shadow-xl">
+      {/* Entity Header */}
+      <div className="bg-slate-900 p-5 flex justify-between items-center text-white">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-red-600 rounded-full flex items-center justify-center font-black">{entity.charAt(0)}</div>
+          <div>
+            <div className="text-[10px] text-slate-400 font-black uppercase">Forensic Entity ID</div>
+            <div className="font-black text-lg leading-tight uppercase">{entity}</div>
           </div>
         </div>
-      ))}
+        <div className="bg-red-600 text-[10px] px-3 py-1 rounded-full font-black">CRITICAL RISK</div>
+      </div>
+
+      {/* NEW: Risk & Network Analysis Section */}
+      <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-12 border-b-2 border-slate-100">
+        <div>
+          <h3 className="text-blue-600 font-black text-xs uppercase mb-4 tracking-widest">Risk Analysis</h3>
+          <div className="bg-red-50 border-2 border-red-100 rounded-3xl p-6">
+            <div className="text-red-800 font-black text-sm mb-2 uppercase">CRITICAL: CIRCULAR TRADE DETECTED</div>
+            <p className="text-xs text-red-700 leading-relaxed font-bold">
+              Entity is shipping goods to itself. This is a primary indicator of <span className="underline">VAT Carousel Fraud</span> or <span className="underline">Trade-Based Money Laundering</span> to artificially inflate company turnover.
+            </p>
+          </div>
+        </div>
+
+        <div>
+          <h3 className="text-blue-600 font-black text-xs uppercase mb-4 tracking-widest">Network Footprint</h3>
+          <div className="flex flex-wrap gap-2 mb-6">
+            {data.countries?.map(c => (
+              <span key={c} className="bg-slate-900 text-white text-[9px] font-black px-3 py-1.5 rounded-full uppercase">
+                {c}
+              </span>
+            ))}
+          </div>
+          <div className="text-xs font-bold text-slate-600 leading-relaxed">
+            <span className="text-slate-400 uppercase text-[10px] block mb-1">Associated Brands:</span>
+            {data.brands?.join(', ')}
+          </div>
+        </div>
+      </div>
+
+      {/* Footer Financials */}
+      <div className="px-8 py-6 bg-slate-50 flex flex-wrap justify-between items-center gap-4">
+        <div className="flex gap-8">
+          <div>
+            <div className="text-[9px] font-black uppercase text-slate-400">Circular Amount</div>
+            <div className="text-xl font-black text-red-700">${data.amount.toLocaleString()}</div>
+          </div>
+          <div>
+            <div className="text-[9px] font-black uppercase text-slate-400">Net Weight (KG)</div>
+            <div className="text-xl font-black text-slate-900">{data.weight.toLocaleString()}</div>
+          </div>
+        </div>
+        <button 
+          onClick={() => { setActiveFilter('self'); setActiveTab('audit'); }}
+          className="bg-white border-2 border-slate-900 px-6 py-2 rounded-xl text-[10px] font-black hover:bg-slate-900 hover:text-white transition-all flex items-center gap-2"
+        >
+          VIEW AUDIT TRAIL <ArrowRight size={14}/>
+        </button>
+      </div>
     </div>
+  ))}
+</div>
 
     {/* 3. AI SUMMARY FOR SELF TRADE */}
     {Object.keys(stats.selfTradeData || {}).length > 0 && (
