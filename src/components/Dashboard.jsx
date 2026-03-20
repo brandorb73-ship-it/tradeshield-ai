@@ -693,7 +693,7 @@ Possible fraud:
 </div>
 
 );
-
+)}
 
           {/* TAB: FINANCIAL FORENSICS */}
 {activeTab === "finance" && (
