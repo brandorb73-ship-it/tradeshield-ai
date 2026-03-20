@@ -418,23 +418,16 @@ CLEAR
     <th className="p-5 text-right">KG/Stick</th>
   </tr>
 </thead>
-                     <tbody className="divide-y-2 divide-slate-100 text-slate-800 font-bold">
+  <tbody className="divide-y-2 divide-slate-100 text-slate-800 font-bold">
   {filteredData.map((row, i) => (
     <tr key={i} className={`${row._isSelf ? 'bg-red-50' : 'hover:bg-slate-50'} transition-colors`}>
       
-      {/* ✅ Risk Score */}
-      <td className="p-5 text-sm font-black">
-        {(
-          (row._isSelf ? 0.3 : 0) +
-          (row._isHS ? 0.2 : 0) +
-          (row._isPrice ? 0.3 : 0) +
-          (row._isDensityAnomaly ? 0.3 : 0)
-        ).toFixed(2)}
-      </td>
-
-      {/* ✅ Flags */}
+      {/* 1. RISK FLAG (Combined Score + Labels) */}
       <td className="p-5">
-        <div className="flex gap-1">
+        <div className="text-sm font-black">
+          {((row._isSelf ? 0.3 : 0) + (row._isHS ? 0.2 : 0) + (row._isPrice ? 0.3 : 0) + (row._isDensityAnomaly ? 0.3 : 0)).toFixed(2)}
+        </div>
+        <div className="flex flex-wrap gap-1 mt-1">
           {row._isSelf && <span className="bg-red-700 text-white text-[10px] px-2 py-1 rounded">SELF</span>}
           {row._isHS && <span className="bg-orange-600 text-white text-[10px] px-2 py-1 rounded">HS</span>}
           {row._isPrice && <span className="bg-purple-700 text-white text-[10px] px-2 py-1 rounded">PRICE</span>}
@@ -442,44 +435,37 @@ CLEAR
         </div>
       </td>
 
-      {/* ✅ Date */}
+      {/* 2. DATE */}
       <td className="p-5 text-sm">{row.Date}</td>
 
-      {/* ✅ Entity */}
+      {/* 3. ENTITY INVOLVED */}
       <td className="p-5">
         <div className="text-base font-black uppercase">{row.Exporter}</div>
         <div className="text-xs text-blue-700 uppercase">To: {row.Importer}</div>
       </td>
 
-      {/* ✅ Brand / HS */}
+      {/* 4. BRAND / HS */}
       <td className="p-5">
         <div className="text-base uppercase">{row.Brand}</div>
         <div className="text-xs text-slate-700">HS: {row['HS Code']}</div>
       </td>
 
-      {/* ✅ Route */}
+      {/* 5. ROUTE */}
       <td className="p-5">
         <div className="text-xs flex items-center gap-1 uppercase">
           <MapPin size={12}/> {row['Origin Country']} &rarr; {row['Destination Country']}
         </div>
       </td>
 
-      {/* ✅ Weight */}
+      {/* 6. WEIGHT (KG) */}
       <td className="p-5 text-right text-base font-black">{row['Weight(Kg)']}</td>
 
-      {/* ✅ Amount */}
+      {/* 7. AMOUNT ($) */}
       <td className="p-5 text-right text-lg font-black text-slate-900">
         ${(row['Amount($)'] || 0).toLocaleString()}
       </td>
 
-      {/* ✅ KG/Stick */}
-      <td className="p-5 text-right text-sm">
-        {row._kgPerStick && row._kgPerStick > 0
-          ? row._kgPerStick.toFixed(4)
-          : "-"}
-      </td>
-
-      {/* ✅ Optional Red Highlight if stick > threshold */}
+      {/* 8. KG/STICK */}
       <td className={`p-5 text-right text-sm ${row._kgPerStick > 0.001 ? "text-red-600 font-bold" : ""}`}>
         {row._kgPerStick ? row._kgPerStick.toFixed(4) : "-"}
       </td>
@@ -489,15 +475,13 @@ CLEAR
 </tbody>
 <tfoot className="bg-slate-100 border-t-4 border-slate-900 font-black text-slate-900 uppercase">
   <tr>
+    {/* colSpan="5" is now correct for 8 total columns (5 labels + 3 data) */}
     <td colSpan="5" className="p-6 text-right text-xl">
       {activeFilter !== 'all' ? `${activeFilter} Total:` : 'Total Audit Volume:'}
     </td>
-    <td className="p-6 text-right text-2xl">
-      {visibleTotals.weight.toFixed(2)} KG
-    </td>
-    <td className="p-6 text-right text-3xl text-red-700">
-      ${visibleTotals.amount.toLocaleString()}
-    </td>
+    <td className="p-6 text-right text-2xl">{visibleTotals.weight.toFixed(2)} KG</td>
+    <td className="p-6 text-right text-3xl text-red-700">${visibleTotals.amount.toLocaleString()}</td>
+    <td></td> {/* Empty cell for the KG/Stick column */}
   </tr>
 </tfoot>
                     </table>
