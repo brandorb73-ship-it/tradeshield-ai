@@ -4,7 +4,7 @@ import {
   AlertTriangle, ShieldCheck, Activity, Globe, Link as LinkIcon, 
   TrendingUp, Search, BarChart3, ListFilter, ShieldAlert, FileText, 
   BookOpen, Network, Zap, Percent, Scale, DownloadCloud, AlertOctagon, 
-  Layers, Calendar, MapPin, ArrowLeftRight, Info, DollarSign, Brain,
+  Layers, Calendar, MapPin, ArrowLeftRight, Info, DollarSign, Brain, AlertCircle,
   ArrowRight
 } from 'lucide-react';
 import "leaflet/dist/leaflet.css";
@@ -656,14 +656,21 @@ AI Intelligence Summary
           </div>
         </div>
         <div className="bg-slate-800 p-4 rounded-full">
-          <AlertCircle size={40} className="text-red-500" />
+          {/* Safety check for the icon */}
+          {typeof AlertCircle !== 'undefined' ? (
+            <AlertCircle size={40} className="text-red-500" />
+          ) : (
+            <ShieldAlert size={40} className="text-red-500" />
+          )}
         </div>
       </div>
     </div>
 
     {/* 2. ENTITY BREAKDOWN GRID */}
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      {Object.entries(stats.selfTradeData || {}).sort((a,b) => b[1].amount - a[1].amount).map(([entity, data]) => (
+      {Object.entries(stats.selfTradeData || {})
+        .sort((a, b) => b[1].amount - a[1].amount)
+        .map(([entity, data]) => (
         <div key={entity} className="bg-white border-4 border-slate-900 rounded-[2.5rem] overflow-hidden shadow-xl hover:scale-[1.01] transition-transform">
           <div className="bg-slate-900 p-5 flex justify-between items-center">
             <div className="flex items-center gap-3">
@@ -683,11 +690,11 @@ AI Intelligence Summary
           <div className="p-8 grid grid-cols-2 gap-8">
             <div>
               <div className="text-[10px] font-black uppercase text-slate-400">Circular Amount</div>
-              <div className="text-2xl font-black text-red-700">${data.amount.toLocaleString()}</div>
+              <div className="text-2xl font-black text-red-700">${(data.amount || 0).toLocaleString()}</div>
             </div>
             <div>
               <div className="text-[10px] font-black uppercase text-slate-400">Net Weight (KG)</div>
-              <div className="text-2xl font-black text-slate-900">{data.weight.toLocaleString()}</div>
+              <div className="text-2xl font-black text-slate-900">{(data.weight || 0).toLocaleString()}</div>
             </div>
             <div className="col-span-2 pt-4 border-t-2 border-slate-100 flex justify-between items-center">
               <div className="flex gap-2 items-center">
@@ -710,11 +717,13 @@ AI Intelligence Summary
     </div>
 
     {/* 3. AI SUMMARY FOR SELF TRADE */}
-    <AISummary
-      title="Circular Trade Intel"
-      icon={AlertCircle}
-      content={`Detected ${Object.keys(stats.selfTradeData || {}).length} entities acting as both Exporter and Importer. The largest actor, ${Object.keys(stats.selfTradeData || {}).sort((a,b) => (stats.selfTradeData[b].amount - stats.selfTradeData[a].amount))[0] || 'N/A'}, accounts for a significant portion of the wash-trade volume.`}
-    />
+    {Object.keys(stats.selfTradeData || {}).length > 0 && (
+      <AISummary
+        title="Circular Trade Intel"
+        icon={typeof AlertCircle !== 'undefined' ? AlertCircle : ShieldAlert}
+        content={`Detected ${Object.keys(stats.selfTradeData).length} entities acting as both Exporter and Importer. The largest actor accounts for $${(Object.values(stats.selfTradeData).sort((a,b) => b.amount - a.amount)[0]?.amount || 0).toLocaleString()} of the wash-trade volume.`}
+      />
+    )}
   </div>
 )}
           {/* TAB: FINANCIAL FORENSICS */}
