@@ -43,7 +43,9 @@ export function buildEntityProfile(entity, data, stats) {
     counterparties[other] = (counterparties[other] || 0) + value;
   });
 
- const weights = {
+// --- SCORING ---
+
+const weights = {
   self: 20,
   hs: 15,
   price: 20,
@@ -66,7 +68,6 @@ const raw =
   (s.ringScore || 0) * weights.ringScore +
   (s.cycleScore || 0) * weights.cycleScore;
 
-// ✅ NORMALIZE PROPERLY
 const maxScore =
   weights.self +
   weights.hs +
@@ -77,38 +78,44 @@ const maxScore =
   weights.ringScore +
   weights.cycleScore;
 
-const finalScore = Math.min(100, (raw / maxScore) * 100);
+const finalScore =
+  maxScore > 0 ? Math.min(100, (raw / maxScore) * 100) : 0;
 
-  return {
-    entity,
-    summary,
-    topRoutes: Object.entries(routes)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 5),
 
-    topBrands: Object.entries(brands)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 5),
+// --- RETURN ---
 
-    linkedEntities: Object.entries(counterparties)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 10),
+return {
+  entity,
+  summary,
 
-ers: {
-  ...s,
-  finalScore,
-  audit: {
-    raw,
-    maxScore,
-    breakdown: {
-      self: (s.self || 0) * weights.self,
-      hs: (s.hs || 0) * weights.hs,
-      price: (s.price || 0) * weights.price,
-      density: (s.density || 0) * weights.density,
-      mlRisk: (s.mlRisk || 0) * weights.mlRisk,
-      shellRisk: (s.shellRisk || 0) * weights.shellRisk,
-      ringScore: (s.ringScore || 0) * weights.ringScore,
-      cycleScore: (s.cycleScore || 0) * weights.cycleScore
+  topRoutes: Object.entries(routes)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5),
+
+  topBrands: Object.entries(brands)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5),
+
+  linkedEntities: Object.entries(counterparties)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 10),
+
+  ers: {
+    ...s,
+    finalScore,
+    audit: {
+      raw,
+      maxScore,
+      breakdown: {
+        self: (s.self || 0) * weights.self,
+        hs: (s.hs || 0) * weights.hs,
+        price: (s.price || 0) * weights.price,
+        density: (s.density || 0) * weights.density,
+        mlRisk: (s.mlRisk || 0) * weights.mlRisk,
+        shellRisk: (s.shellRisk || 0) * weights.shellRisk,
+        ringScore: (s.ringScore || 0) * weights.ringScore,
+        cycleScore: (s.cycleScore || 0) * weights.cycleScore
+      }
     }
-   };
-}
+  }
+};
