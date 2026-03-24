@@ -164,7 +164,7 @@ function Bar({ label, val, total, color }) {
     <div>
       <div className="flex justify-between text-xs font-bold">
         <span>{label}</span>
-        <span>{val}</span>
+        <span>{Number(val).toFixed(2)}</span>
       </div>
       <div className="w-full bg-slate-200 h-2 rounded">
         <div className={`${color} h-2 rounded`} style={{ width: `${pct}%` }} />
