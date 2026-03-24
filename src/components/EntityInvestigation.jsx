@@ -1,5 +1,6 @@
 import React, { useMemo } from "react";
 import { buildEntityProfile } from "../analytics/entityInvestigationEngine";
+import { buildEuropolSignals } from "../analytics/europolEngine";
 
 export default function EntityInvestigation({
   entity,
@@ -15,12 +16,16 @@ export default function EntityInvestigation({
 
   if (!profile) return null;
 
+  const europol = useMemo(() => {
+  return buildEuropolSignals(entity, data, stats);
+}, [entity, data, stats]);
+  
   const { summary, topRoutes, topBrands, linkedEntities, ers } = profile;
 
   const exportValue = data
     .filter(r => r.Exporter === entity)
     .reduce((a, b) => a + (b["Amount($)"] || 0), 0);
-
+  
   const importValue = data
     .filter(r => r.Importer === entity)
     .reduce((a, b) => a + (b["Amount($)"] || 0), 0);
@@ -66,6 +71,22 @@ export default function EntityInvestigation({
         </div>
       </div>
 
+      <div className="mb-8">
+  <h3 className="font-black mb-3 text-sm uppercase text-slate-500">
+    Europol Intelligence
+  </h3>
+
+  <div className="space-y-2">
+
+    <Bar label="Shell Risk" val={europol?.shellScore || 0} total={100} color="bg-red-700" />
+    <Bar label="Fraud Ring" val={europol?.ringScore || 0} total={100} color="bg-orange-600" />
+    <Bar label="Cycle Risk" val={europol?.cycleScore || 0} total={100} color="bg-yellow-500" />
+    <Bar label="ML Anomaly" val={europol?.mlScore || 0} total={100} color="bg-purple-600" />
+    <Bar label="Corridor Risk" val={europol?.corridorRisk || 0} total={100} color="bg-blue-600" />
+
+  </div>
+</div>
+      
       {/* ROUTES + BRANDS */}
       <div className="grid md:grid-cols-2 gap-8 mb-8">
 
