@@ -31,6 +31,7 @@ import detectInvoiceMismatch from "../analytics/invoiceCheck";
 import { HSTab } from './Tabs/HSTab.jsx';
 import MassBalanceTab from "./Tabs/MassBalanceTab.jsx";
 import EntityInvestigation from "./EntityInvestigation";
+import { buildEntityProfile } from "../analytics/entityInvestigationEngine";
 import { generateForensicReport } from '../utils/forensics.js';
 
 const generateNarrative = (stats, fraudStats, entityERS) => {
