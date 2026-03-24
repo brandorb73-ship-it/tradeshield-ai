@@ -39,22 +39,6 @@ import { generateForensicReport } from '../utils/forensics.js';
 const generateNarrative = (stats, fraudStats, entityERS) => {
   if (!stats || !entityERS) return "Awaiting trade data for forensic analysis...";
 
-  const europolMap = useMemo(() => {
-  const map = {};
-  data.forEach(r => {
-    [r.Exporter, r.Importer].forEach(e => {
-      if (!map[e]) {
-        map[e] = buildEuropolSignals(e, data, stats);
-      }
-    });
-  });
-  return map;
-}, [data, stats]);
-
-  const masterminds = useMemo(() => {
-  return buildMastermindScores(data, europolMap);
-}, [data, europolMap]);
-
   const totalValue = (stats.totalAmt || 0).toLocaleString();
   const highRiskEntities = entityERS.filter(e => e.priceAnomaly > 0).length;
   const topVulnerable = entityERS.sort((a, b) => b.priceAnomaly - a.priceAnomaly)[0]?.name || "None";
@@ -90,6 +74,21 @@ const [activeFilter, setActiveFilter] = useState("all");
   const [stats, setStats] = useState({});
   const [intel, setIntel] = useState({});
   const [selectedEntity, setSelectedEntity] = useState(null);
+  const europolMap = useMemo(() => {
+  const map = {};
+  data.forEach(r => {
+    [r.Exporter, r.Importer].forEach(e => {
+      if (!map[e]) {
+        map[e] = buildEuropolSignals(e, data, stats);
+      }
+    });
+  });
+  return map;
+}, [data, stats]);
+
+const masterminds = useMemo(() => {
+  return buildMastermindScores(data, europolMap);
+}, [data, europolMap]);
   const [ersView, setErsView] = useState('exporter'); // 'exporter' or 'importer'
 const entityERS = useMemo(() => {
   if (!stats.entityStats) return [];
