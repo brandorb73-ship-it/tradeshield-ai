@@ -57,7 +57,7 @@ const raw =
 
 const finalScore =
   s.transactions > 0
-    ? Math.min(100, raw / s.transactions)
+    ? Math.min(100, (raw / s.total)
     : 0;
 
 return {
