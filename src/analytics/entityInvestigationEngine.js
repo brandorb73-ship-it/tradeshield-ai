@@ -56,8 +56,8 @@ const raw =
   (s.cycleScore || 0) * 35;
 
 const finalScore =
-  s.transactions > 0
-    ? Math.min(100, (raw / s.total)
+  s.total > 0
+    ? Math.min(100, raw / s.total)
     : 0;
 
 return {
