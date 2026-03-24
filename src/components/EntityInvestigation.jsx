@@ -47,6 +47,24 @@ export default function EntityInvestigation({
         </div>
       </div>
 
+      <div className="mt-6 bg-slate-50 p-4 rounded-xl border">
+  <h3 className="font-bold mb-2">🔍 Score Breakdown</h3>
+
+  {Object.entries(profile.ers.audit.breakdown).map(([k,v]) => (
+    <div key={k} className="flex justify-between text-sm">
+      <span className="capitalize">{k}</span>
+      <span>{v.toFixed(2)}</span>
+    </div>
+  ))}
+
+  <div className="mt-2 border-t pt-2 text-sm font-bold flex justify-between">
+    <span>Total</span>
+    <span>
+      {profile.ers.audit.raw.toFixed(2)} / {profile.ers.audit.maxScore}
+    </span>
+  </div>
+</div>
+      
       {/* CORE METRICS */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
 
