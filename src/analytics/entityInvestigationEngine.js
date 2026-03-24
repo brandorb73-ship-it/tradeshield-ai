@@ -42,32 +42,42 @@ export function buildEntityProfile(entity, data, stats) {
     const other = r.Exporter === entity ? r.Importer : r.Exporter;
     counterparties[other] = (counterparties[other] || 0) + value;
   });
-  
-const s = stats.entityStats?.[entity] || {};
 
-const raw =
-  (s.self || 0) * 20 +
-  (s.hs || 0) * 15 +
-  (s.price || 0) * 20 +
-  (s.density || 0) * 30 +
-  (s.mlRisk || 0) * 20 +
-  (s.shellRisk || 0) * 30 +
-  (s.ringScore || 0) * 40 +
-  (s.cycleScore || 0) * 35;
+  const s = stats.entityStats?.[entity] || {};
 
-const finalScore =
-  s.total > 0
-    ? Math.min(100, raw / s.total)
-    : 0;
+  const raw =
+    (s.self || 0) * 20 +
+    (s.hs || 0) * 15 +
+    (s.price || 0) * 20 +
+    (s.density || 0) * 30 +
+    (s.mlRisk || 0) * 20 +
+    (s.shellRisk || 0) * 30 +
+    (s.ringScore || 0) * 40 +
+    (s.cycleScore || 0) * 35;
 
-return {
-  entity,
-  summary,
-  topRoutes: Object.entries(routes).sort((a,b)=>b[1]-a[1]).slice(0,5),
-  topBrands: Object.entries(brands).sort((a,b)=>b[1]-a[1]).slice(0,5),
-  linkedEntities: Object.entries(counterparties).sort((a,b)=>b[1]-a[1]).slice(0,10),
-  ers: {
-    ...s,
-    finalScore
-  }
-};
+  const finalScore =
+    s.total > 0
+      ? Math.min(100, raw / s.total)
+      : 0;
+
+  return {
+    entity,
+    summary,
+    topRoutes: Object.entries(routes)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5),
+
+    topBrands: Object.entries(brands)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5),
+
+    linkedEntities: Object.entries(counterparties)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10),
+
+    ers: {
+      ...s,
+      finalScore
+    }
+  };
+}
