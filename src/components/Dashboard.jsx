@@ -652,6 +652,7 @@ AI Intelligence Summary
         ))}
     </div>
 
+      {/* MASTERMINDS */}
            <div className="bg-white p-6 rounded-2xl border mb-6">
   <h2 className="text-xl font-black mb-4">
     🧠 Mastermind Detection
@@ -680,7 +681,7 @@ AI Intelligence Summary
   </div>
 </div>
 
-     {/* 3. INVESTIGATION PANEL */}
+    {/* INVESTIGATION PANEL */}
     {selectedEntity && (
       <EntityInvestigation
         entity={selectedEntity}
@@ -691,35 +692,55 @@ AI Intelligence Summary
       />
     )}
 
-  </div>
-)}
-
     {/* AI FORENSIC SUMMARY */}
     <div className="bg-blue-50 p-8 rounded-[2.5rem] border-4 border-blue-900 mt-10">
       <div className="flex items-center gap-3 mb-4 text-blue-900">
         <Brain size={32} />
-        <h2 className="text-2xl font-black uppercase italic">AI Forensic Intelligence</h2>
+        <h2 className="text-2xl font-black uppercase italic">
+          AI Forensic Intelligence
+        </h2>
       </div>
       <div className="text-blue-900 font-bold">
-        {generateNarrative(stats, fraudStats, entityERS.filter(e => ersView === 'exporter' ? e.isExporter : e.isImporter))}
+        {generateNarrative(
+          stats,
+          fraudStats,
+          entityERS.filter(e =>
+            ersView === 'exporter' ? e.isExporter : e.isImporter
+          )
+        )}
       </div>
     </div>
 
     {/* METHODOLOGY FOOTER */}
     <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6 border-t-2 border-slate-200 pt-8">
       <div>
-        <h4 className="text-[10px] font-black uppercase text-slate-400 mb-2">What is ERS?</h4>
-        <p className="text-xs text-slate-600">Weighted forensic index (0-100) aggregating trade patterns.</p>
+        <h4 className="text-[10px] font-black uppercase text-slate-400 mb-2">
+          What is ERS?
+        </h4>
+        <p className="text-xs text-slate-600">
+          Weighted forensic index (0-100) aggregating trade patterns.
+        </p>
       </div>
+
       <div>
-        <h4 className="text-[10px] font-black uppercase text-slate-400 mb-2">Brand Median Logic</h4>
-        <p className="text-xs text-slate-600">Baselines calculated via $Total Value / Total Weight$.</p>
+        <h4 className="text-[10px] font-black uppercase text-slate-400 mb-2">
+          Brand Median Logic
+        </h4>
+        <p className="text-xs text-slate-600">
+          Baselines calculated via $Total Value / Total Weight$.
+        </p>
       </div>
+
       <div>
-        <h4 className="text-[10px] font-black uppercase text-slate-400 mb-2">Responsibility</h4>
-        <p className="text-xs text-slate-600">Exporters declare the data; Importers are flagged as high-risk counterparties.</p>
+        <h4 className="text-[10px] font-black uppercase text-slate-400 mb-2">
+          Responsibility
+        </h4>
+        <p className="text-xs text-slate-600">
+          Exporters declare the data; Importers are flagged as high-risk counterparties.
+        </p>
       </div>
     </div>
+
   </div>
 )}
           
