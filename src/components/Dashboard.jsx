@@ -920,12 +920,13 @@ VIEW AUDIT TRAIL <ArrowRight size={16} strokeWidth={3}/>
 )}
           {activeTab === "guide" && <GuideView />}
 {selectedEntity && ( 
-  <EntityInvestigation
-    entity={selectedEntity}
-    data={data}
-    stats={stats}
-    intel={stats}   // use stats for now (safe)
-  />
+<EntityInvestigation
+  entity={selectedEntity}
+  data={data}
+  stats={stats}
+  fraudStats={fraudStats}
+  onSelectEntity={(e) => setSelectedEntity(e)}
+/>
 )}
         </main>
       )}
