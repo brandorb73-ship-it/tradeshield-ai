@@ -160,15 +160,50 @@ function Stat({ label, value }) {
 function Bar({ label, val, total, color }) {
   const pct = total ? (val / total) * 100 : 0;
 
+  const explanations = {
+    "Shell Risk":
+      "Likelihood the entity behaves like a shell company (low value trades, few partners, self-trading patterns).",
+
+    "Fraud Ring":
+      "Indicates participation in coordinated fraud networks based on repeated HS mismatches, price anomalies, and structured trade patterns.",
+
+    "Cycle Risk":
+      "Detects potential VAT carousel loops where goods circulate between the same entities/countries.",
+
+    "ML Anomaly":
+      "Statistical anomaly score based on unusually high or low transaction values.",
+
+    "Corridor Risk":
+      "Exposure to high-risk trade routes commonly associated with illicit flows (e.g. China, UAE, Turkey)."
+  };
+
   return (
-    <div>
+    <div className="group relative">
+      
+      {/* LABEL + VALUE */}
       <div className="flex justify-between text-xs font-bold">
         <span>{label}</span>
         <span>{Number(val).toFixed(2)}</span>
       </div>
+
+      {/* BAR */}
       <div className="w-full bg-slate-200 h-2 rounded">
-        <div className={`${color} h-2 rounded`} style={{ width: `${pct}%` }} />
+        <div
+          className={`${color} h-2 rounded`}
+          style={{ width: `${pct}%` }}
+        />
       </div>
+
+      {/* TOOLTIP */}
+      <div className="absolute left-0 top-full mt-2 w-64 bg-black text-white text-xs p-3 rounded opacity-0 group-hover:opacity-100 transition pointer-events-none z-50">
+        <div className="font-bold mb-1">{label}</div>
+        <div>{explanations[label]}</div>
+
+        <div className="mt-2 text-slate-300">
+          Score: {Number(val).toFixed(2)} / 100
+        </div>
+      </div>
+
     </div>
   );
 }
