@@ -608,7 +608,11 @@ AI Intelligence Summary
         .filter(e => ersView === 'exporter' ? e.isExporter : e.isImporter)
         .sort((a, b) => b.priceAnomaly - a.priceAnomaly)
         .map((entity) => (
-          <div key={entity.name} className="bg-white p-8 rounded-[2.5rem] border-4 border-slate-900 shadow-xl relative">
+          <div 
+  key={entity.name} 
+  onClick={() => setSelectedEntity(entity.name)}
+  className="bg-white p-8 rounded-[2.5rem] border-4 border-slate-900 shadow-xl relative cursor-pointer hover:scale-105"
+>
             <div className="absolute top-4 right-4 text-[8px] font-black bg-blue-100 text-blue-700 px-2 py-1 rounded-full uppercase">
               {ersView}
             </div>
