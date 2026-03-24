@@ -43,22 +43,41 @@ export function buildEntityProfile(entity, data, stats) {
     counterparties[other] = (counterparties[other] || 0) + value;
   });
 
-  const s = stats.entityStats?.[entity] || {};
+ const weights = {
+  self: 20,
+  hs: 15,
+  price: 20,
+  density: 30,
+  mlRisk: 20,
+  shellRisk: 30,
+  ringScore: 40,
+  cycleScore: 35
+};
 
-  const raw =
-    (s.self || 0) * 20 +
-    (s.hs || 0) * 15 +
-    (s.price || 0) * 20 +
-    (s.density || 0) * 30 +
-    (s.mlRisk || 0) * 20 +
-    (s.shellRisk || 0) * 30 +
-    (s.ringScore || 0) * 40 +
-    (s.cycleScore || 0) * 35;
+const s = stats.entityStats?.[entity] || {};
 
-  const finalScore =
-    s.total > 0
-      ? Math.min(100, raw / s.total)
-      : 0;
+const raw =
+  (s.self || 0) * weights.self +
+  (s.hs || 0) * weights.hs +
+  (s.price || 0) * weights.price +
+  (s.density || 0) * weights.density +
+  (s.mlRisk || 0) * weights.mlRisk +
+  (s.shellRisk || 0) * weights.shellRisk +
+  (s.ringScore || 0) * weights.ringScore +
+  (s.cycleScore || 0) * weights.cycleScore;
+
+// ✅ NORMALIZE PROPERLY
+const maxScore =
+  weights.self +
+  weights.hs +
+  weights.price +
+  weights.density +
+  weights.mlRisk +
+  weights.shellRisk +
+  weights.ringScore +
+  weights.cycleScore;
+
+const finalScore = Math.min(100, (raw / maxScore) * 100);
 
   return {
     entity,
