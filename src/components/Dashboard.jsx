@@ -32,10 +32,28 @@ import { HSTab } from './Tabs/HSTab.jsx';
 import MassBalanceTab from "./Tabs/MassBalanceTab.jsx";
 import EntityInvestigation from "./EntityInvestigation";
 import { buildEntityProfile } from "../analytics/entityInvestigationEngine";
+import { buildEuropolSignals } from "../analytics/europolEngine";
+import { buildMastermindScores } from "../analytics/mastermindEngine";
 import { generateForensicReport } from '../utils/forensics.js';
 
 const generateNarrative = (stats, fraudStats, entityERS) => {
   if (!stats || !entityERS) return "Awaiting trade data for forensic analysis...";
+
+  const europolMap = useMemo(() => {
+  const map = {};
+  data.forEach(r => {
+    [r.Exporter, r.Importer].forEach(e => {
+      if (!map[e]) {
+        map[e] = buildEuropolSignals(e, data, stats);
+      }
+    });
+  });
+  return map;
+}, [data, stats]);
+
+  const masterminds = useMemo(() => {
+  return buildMastermindScores(data, europolMap);
+}, [data, europolMap]);
 
   const totalValue = (stats.totalAmt || 0).toLocaleString();
   const highRiskEntities = entityERS.filter(e => e.priceAnomaly > 0).length;
@@ -635,6 +653,33 @@ AI Intelligence Summary
         ))}
     </div>
 
+    <div className="bg-white p-6 rounded-2xl border mb-6">
+  <h2 className="text-xl font-black mb-4">
+    🧠 Mastermind Detection
+  </h2>
+
+  <div className="grid md:grid-cols-3 gap-4">
+    {masterminds.map(m => (
+      <div
+        key={m.name}
+        onClick={() => setSelectedEntity(m.name)}
+        className="p-4 border rounded-xl cursor-pointer hover:bg-red-50"
+      >
+        <div className="font-bold">{m.name}</div>
+
+        <div className="text-3xl font-black text-red-600">
+          {m.score.toFixed(1)}
+        </div>
+
+        <div className="text-xs mt-2 space-y-1">
+          <div>Connections: {m.connectivity.toFixed(1)}</div>
+          <div>Ring: {m.ringInfluence.toFixed(1)}</div>
+          <div>Cycle: {m.cycleScore.toFixed(1)}</div>
+        </div>
+      </div>
+    ))}
+  </div>
+</div>
     {/* AI FORENSIC SUMMARY */}
     <div className="bg-blue-50 p-8 rounded-[2.5rem] border-4 border-blue-900 mt-10">
       <div className="flex items-center gap-3 mb-4 text-blue-900">
