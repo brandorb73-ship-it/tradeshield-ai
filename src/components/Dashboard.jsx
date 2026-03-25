@@ -104,7 +104,21 @@ const entityERS = useMemo(() => {
       (s.ringScore * 40) +
       (s.cycleScore * 35);
       
-    const final = Math.min(100, (raw / s.total) + (s.total > 10 ? 10 : 0));
+  const totalTx = s.transactions || 1;
+
+const normalized =
+  (s.self || 0) / totalTx * 20 +
+  (s.hs || 0) / totalTx * 15 +
+  (s.price || 0) / totalTx * 20 +
+  (s.density || 0) / totalTx * 30;
+
+const external =
+  (s.mlRisk || 0) * 0.2 +
+  (s.shellRisk || 0) * 0.3 +
+  (s.ringScore || 0) * 0.4 +
+  (s.cycleScore || 0) * 0.35;
+
+const final = Math.min(100, normalized + external);
     return { name, ...s, finalScore: final.toFixed(1) };
   }).sort((a, b) => b.finalScore - a.finalScore);
 }, [stats]);
@@ -627,11 +641,10 @@ AI Intelligence Summary
     .filter(e => ersView === 'exporter' ? e.isExporter : e.isImporter)
     .sort((a, b) => b.priceAnomaly - a.priceAnomaly)
     .map((entity) => {
-    const profile = buildEntityProfile(
+const profile = buildEntityProfile(
   entity.name,
   data,
-  stats,
-  ersView // 👈 THIS is the fix
+  stats
 );
 
       return (
