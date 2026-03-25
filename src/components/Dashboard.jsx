@@ -91,35 +91,42 @@ const masterminds = useMemo(() => {
 }, [data, europolMap]);
   const [ersView, setErsView] = useState('exporter'); // 'exporter' or 'importer'
 const entityERS = useMemo(() => {
-  if (!stats.entityStats) return [];
-  return Object.entries(stats?.entityStats || {}).map(([name, s]) => {
-    // FIXED: Removed the floating "(" and combined the math correctly
+  const entities = stats?.entityStats || {};
+  return Object.entries(entities).map(([name, s]) => {
+    // Ensure all fields exist to prevent NaN
+    const self = s?.self || 0;
+    const hs = s?.hs || 0;
+    const price = s?.price || 0;
+    const density = s?.density || 0;
+    const mlRisk = s?.mlRisk || 0;
+    const shellRisk = s?.shellRisk || 0;
+    const ringScore = s?.ringScore || 0;
+    const cycleScore = s?.cycleScore || 0;
+    const total = s?.total || 1; // Avoid division by zero
+
+    // Weighted raw score calculation
     const raw =
-      (s.self * 20) +
-      (s.hs * 15) +
-      (s.price * 20) +
-      (s.density * 30) +
-      (s.mlRisk * 20) +
-      (s.shellRisk * 30) +
-      (s.ringScore * 40) +
-      (s.cycleScore * 35);
-      
-  const totalTx = s.transactions || 1;
+      (self * 20) +
+      (hs * 15) +
+      (price * 20) +
+      (density * 30) +
+      (mlRisk * 20) +
+      (shellRisk * 30) +
+      (ringScore * 40) +
+      (cycleScore * 35);
 
-const normalized =
-  (s.self || 0) / totalTx * 20 +
-  (s.hs || 0) / totalTx * 15 +
-  (s.price || 0) / totalTx * 20 +
-  (s.density || 0) / totalTx * 30;
+    // Final score capped at 100
+    const final = Math.min(100, (raw / total) + (total > 10 ? 10 : 0));
 
-const external =
-  (s.mlRisk || 0) * 0.2 +
-  (s.shellRisk || 0) * 0.3 +
-  (s.ringScore || 0) * 0.4 +
-  (s.cycleScore || 0) * 0.35;
-
-const final = Math.min(100, normalized + external);
-    return { name, ...s, finalScore: final.toFixed(1) };
+    return {
+      name,
+      ...s,
+      finalScore: final.toFixed(1),
+      // Ensure boolean flags exist
+      isExporter: s?.isExporter || false,
+      isImporter: s?.isImporter || false,
+      priceAnomaly: s?.priceAnomaly || 0,
+    };
   }).sort((a, b) => b.finalScore - a.finalScore);
 }, [stats]);
 const shellScores = {};
