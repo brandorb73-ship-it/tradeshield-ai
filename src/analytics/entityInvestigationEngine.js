@@ -54,8 +54,6 @@ export function buildEntityProfile(entity, data, stats) {
   };
 const num = (v) => Number(v) || 0;
 
-  console.log("ERS DEBUG:", entity, s, raw, maxScore);
-  
   const s = stats.entityStats?.[entity] || {};
 
 const raw =
@@ -72,6 +70,7 @@ const raw =
 
   const finalScore = maxScore > 0 ? Math.min(100, (raw / maxScore) * 100) : 0;
 
+    console.log("ERS DEBUG:", entity, s, raw, maxScore);
   return {
     entity,
     summary,
