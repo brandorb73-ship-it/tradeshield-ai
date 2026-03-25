@@ -637,17 +637,24 @@ AI Intelligence Summary
             </div>
             <h3 className="text-xl font-black uppercase truncate mb-4 pr-10">{entity.name}</h3>
             <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200">
-              <div className="grid grid-cols-2 gap-4 text-center">
-                <div>
-                  <div className="text-2xl font-black text-red-600">{entity.priceAnomaly || 0}</div>
-                  <div className="text-[9px] font-bold text-slate-500 uppercase">Anomalies</div>
-                </div>
-                <div className="border-l">
-                  <div className="text-2xl font-black text-slate-900">{entity.transactions}</div>
-                  <div className="text-[9px] font-bold text-slate-500 uppercase">Shipments</div>
-                </div>
-              </div>
-            </div>
+<div className="grid grid-cols-2 gap-4 text-center">
+  <div>
+    <div className="text-2xl font-black text-red-600">
+      {entity.priceAnomaly || 0}
+    </div>
+    <div className="text-[9px] font-bold text-slate-500 uppercase">
+      Anomalies
+    </div>
+  </div>
+  <div className="border-l">
+    <div className="text-2xl font-black text-slate-900">
+      {profile?.summary?.totalShipments || 0} {/* <-- UPDATED */}
+    </div>
+    <div className="text-[9px] font-bold text-slate-500 uppercase">
+      Shipments
+    </div>
+  </div>
+</div>
           </div>
         ))}
     </div>
