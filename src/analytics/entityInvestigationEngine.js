@@ -99,7 +99,6 @@ const raw =
   shellRisk: num(s.shellRisk) * weights.shellRisk,
   ringScore: num(s.ringScore) * weights.ringScore,
   cycleScore: num(s.cycleScore) * weights.cycleScore
-}
         }
       }
     }
