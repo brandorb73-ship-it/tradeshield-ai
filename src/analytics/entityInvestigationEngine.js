@@ -52,18 +52,21 @@ export function buildEntityProfile(entity, data, stats) {
     ringScore: 40,
     cycleScore: 35
   };
+const num = (v) => Number(v) || 0;
 
+  console.log("ERS DEBUG:", entity, s, raw, maxScore);
+  
   const s = stats.entityStats?.[entity] || {};
 
-  const raw =
-    (s.self || 0) * weights.self +
-    (s.hs || 0) * weights.hs +
-    (s.price || 0) * weights.price +
-    (s.density || 0) * weights.density +
-    (s.mlRisk || 0) * weights.mlRisk +
-    (s.shellRisk || 0) * weights.shellRisk +
-    (s.ringScore || 0) * weights.ringScore +
-    (s.cycleScore || 0) * weights.cycleScore;
+const raw =
+  num(s.self) * weights.self +
+  num(s.hs) * weights.hs +
+  num(s.price) * weights.price +
+  num(s.density) * weights.density +
+  num(s.mlRisk) * weights.mlRisk +
+  num(s.shellRisk) * weights.shellRisk +
+  num(s.ringScore) * weights.ringScore +
+  num(s.cycleScore) * weights.cycleScore;
 
   const maxScore = Object.values(weights).reduce((a,b) => a+b, 0);
 
@@ -88,14 +91,15 @@ export function buildEntityProfile(entity, data, stats) {
         raw,
         maxScore,
         breakdown: {
-          self: (s.self||0)*weights.self,
-          hs: (s.hs||0)*weights.hs,
-          price: (s.price||0)*weights.price,
-          density: (s.density||0)*weights.density,
-          mlRisk: (s.mlRisk||0)*weights.mlRisk,
-          shellRisk: (s.shellRisk||0)*weights.shellRisk,
-          ringScore: (s.ringScore||0)*weights.ringScore,
-          cycleScore: (s.cycleScore||0)*weights.cycleScore
+  self: num(s.self) * weights.self,
+  hs: num(s.hs) * weights.hs,
+  price: num(s.price) * weights.price,
+  density: num(s.density) * weights.density,
+  mlRisk: num(s.mlRisk) * weights.mlRisk,
+  shellRisk: num(s.shellRisk) * weights.shellRisk,
+  ringScore: num(s.ringScore) * weights.ringScore,
+  cycleScore: num(s.cycleScore) * weights.cycleScore
+}
         }
       }
     }
