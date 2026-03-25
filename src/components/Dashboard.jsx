@@ -92,7 +92,7 @@ const masterminds = useMemo(() => {
   const [ersView, setErsView] = useState('exporter'); // 'exporter' or 'importer'
 const entityERS = useMemo(() => {
   if (!stats.entityStats) return [];
-  return Object.entries(stats.entityStats).map(([name, s]) => {
+  return Object.entries(stats?.entityStats || {}).map(([name, s]) => {
     // FIXED: Removed the floating "(" and combined the math correctly
     const raw =
       (s.self * 20) +
