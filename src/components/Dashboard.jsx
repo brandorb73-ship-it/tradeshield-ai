@@ -621,14 +621,18 @@ AI Intelligence Summary
       </div>
     </div>
 
-    {/* CARDS */}
  {/* CARDS */}
 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
   {entityERS
     .filter(e => ersView === 'exporter' ? e.isExporter : e.isImporter)
     .sort((a, b) => b.priceAnomaly - a.priceAnomaly)
     .map((entity) => {
-      const profile = buildEntityProfile(entity.name, data, stats);
+    const profile = buildEntityProfile(
+  entity.name,
+  data,
+  stats,
+  ersView // 👈 THIS is the fix
+);
 
       return (
         <div 
