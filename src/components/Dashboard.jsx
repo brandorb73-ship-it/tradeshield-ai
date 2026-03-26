@@ -35,6 +35,9 @@ import { buildEntityProfile } from "../analytics/entityInvestigationEngine";
 import { buildEuropolSignals } from "../analytics/europolEngine";
 import { buildMastermindScores } from "../analytics/mastermindEngine";
 import { generateForensicReport } from '../utils/forensics.js';
+import useERS from "../hooks/useERS";
+import useMastermind from "../hooks/useMastermind";
+import ERSPanel from "./ERSPanel";
 
 const generateNarrative = (stats, fraudStats, entityERS) => {
   if (!stats || !entityERS) return "Awaiting trade data for forensic analysis...";
@@ -74,6 +77,8 @@ const [activeFilter, setActiveFilter] = useState("all");
   const [stats, setStats] = useState({});
   const [intel, setIntel] = useState({});
   const [selectedEntity, setSelectedEntity] = useState(null);
+  const ersData = useERS(stats);
+const mastermindData = useMastermind(stats);
   const europolMap = useMemo(() => {
   const map = {};
   data.forEach(r => {
@@ -627,125 +632,14 @@ AI Intelligence Summary
 
 {/* TAB: ERS SCORING */}
 {activeTab === "ers" && (
-  <div className="space-y-6 pb-20">
-    {/* VIEW TOGGLE */}
-    <div className="flex justify-center mb-10">
-      <div className="bg-slate-100 p-1.5 rounded-2xl flex gap-2 border-2 border-slate-200">
-        <button 
-          onClick={() => setErsView('exporter')}
-          className={`px-8 py-3 rounded-xl text-xs font-black uppercase transition-all ${ersView === 'exporter' ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-500'}`}
-        >
-          Exporter Risk
-        </button>
-        <button 
-          onClick={() => setErsView('importer')}
-          className={`px-8 py-3 rounded-xl text-xs font-black uppercase transition-all ${ersView === 'importer' ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-500'}`}
-        >
-          Importer Risk
-        </button>
-      </div>
-    </div>
-
- {/* CARDS */}
-<div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-  {entityERS
-    .filter(e => ersView === 'exporter' ? e.isExporter : e.isImporter)
-    .sort((a, b) => b.priceAnomaly - a.priceAnomaly)
-    .map((entity) => {
-const profile = buildEntityProfile(
-  entity.name,
-  data,
-  stats
-);
-
-      return (
-        <div 
-          key={entity.name} 
-          onClick={() => setSelectedEntity(entity.name)}
-          className="bg-white p-8 rounded-[2.5rem] border-4 border-slate-900 shadow-xl relative cursor-pointer hover:scale-105"
-          title={`Shipments: ${profile?.summary?.totalShipments || 0}
-Anomalies:
-  Self: ${profile?.summary?.selfTrades || 0}
-  HS: ${profile?.summary?.hsFlags || 0}
-  Price: ${profile?.summary?.priceFlags || 0}
-  Density: ${profile?.summary?.densityFlags || 0}
-
-External Risks:
-  ML Risk: ${((profile?.ers?.mlRisk || 0) * 100).toFixed(1)}
-  Shell Risk: ${((profile?.ers?.shellRisk || 0) * 100).toFixed(1)}
-  Ring Score: ${((profile?.ers?.ringScore || 0) * 100).toFixed(1)}
-  Cycle Score: ${((profile?.ers?.cycleScore || 0) * 100).toFixed(1)}
-
-ERS Calculation:
-  Raw: ${profile?.ers?.audit?.raw?.toFixed(1) || 0}
-  Max: ${profile?.ers?.audit?.maxScore?.toFixed(1) || 0}
-  Final: ${profile?.ers?.finalScore?.toFixed(1) || 0}%`}
-        >
-          <div className="absolute top-4 right-4 text-[8px] font-black bg-blue-100 text-blue-700 px-2 py-1 rounded-full uppercase">
-            {ersView}
-          </div>
-
-          <h3 className="text-xl font-black uppercase truncate mb-4 pr-10">
-            {entity.name}
-          </h3>
-
-          <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200">
-            <div className="grid grid-cols-2 gap-4 text-center">
-              
-              {/* ANOMALIES */}
-              <div>
-                <div className="text-2xl font-black text-red-600">
-                  {entity.priceAnomaly || 0}
-                </div>
-                <div className="text-[9px] font-bold text-slate-500 uppercase">
-                  Anomalies
-                </div>
-              </div>
-
-              {/* SHIPMENTS */}
-              <div className="border-l">
-                <div className="text-2xl font-black text-slate-900">
-                  {profile?.summary?.totalShipments || 0}
-                </div>
-                <div className="text-[9px] font-bold text-slate-500 uppercase">
-                  Shipments
-                </div>
-              </div>
-
-            </div>
-          </div>
-        </div>
-      );
-    })}
-</div>
-      {/* MASTERMINDS */}
-           <div className="bg-white p-6 rounded-2xl border mb-6">
-  <h2 className="text-xl font-black mb-4">
-    🧠 Mastermind Detection
-  </h2>
-
-  <div className="grid md:grid-cols-3 gap-4">
-    {masterminds.map(m => (
-      <div
-        key={m.name}
-        onClick={() => setSelectedEntity(m.name)}
-        className="p-4 border rounded-xl cursor-pointer hover:bg-red-50"
-      >
-        <div className="font-bold">{m.name}</div>
-
-        <div className="text-3xl font-black text-red-600">
-          {m.score.toFixed(1)}
-        </div>
-
-        <div className="text-xs mt-2 space-y-1">
-          <div>Connections: {m.connectivity.toFixed(1)}</div>
-          <div>Ring: {m.ringInfluence.toFixed(1)}</div>
-          <div>Cycle: {m.cycleScore.toFixed(1)}</div>
-        </div>
-      </div>
-    ))}
-  </div>
-</div>
+  <ERSPanel
+    data={data}
+    stats={stats}
+    ersData={ersData}
+    mastermindData={mastermindData}
+    onSelectEntity={setSelectedEntity}
+  />
+)}
 
     {/* INVESTIGATION PANEL */}
     {selectedEntity && (
