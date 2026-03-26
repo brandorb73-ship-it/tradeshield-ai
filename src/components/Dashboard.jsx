@@ -330,8 +330,12 @@ const analyzeFraud = (rawData) => {
 
     entityStats[exp].isExporter = true;
     entityStats[imp].isImporter = true;
-    entityStats[exp].transactions++;
-    entityStats[imp].transactions++;
+if (exp === imp) {
+  entityStats[exp].transactions++; // self trade = 1
+} else {
+  entityStats[exp].transactions++;
+  entityStats[imp].transactions++;
+}
 
     if (r._isPrice) { entityStats[exp].priceAnomaly++; entityStats[imp].priceAnomaly++; }
     if (r._isSelf) { entityStats[exp].self++; }
