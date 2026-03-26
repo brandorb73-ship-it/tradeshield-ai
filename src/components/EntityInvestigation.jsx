@@ -61,14 +61,14 @@ export default function EntityInvestigation({
   <div className="bg-slate-50 p-4 rounded-xl border mt-6">
     <h3 className="font-bold mb-3">🔍 ERS Score Breakdown</h3>
 
-    {Object.entries(profile.ers.audit.breakdown).map(([k, v]) => (
-      <div key={k} className="flex justify-between text-sm py-1">
-        <span className="capitalize">{k}</span>
-        <span className="font-bold text-red-600">
-          {v.toFixed(2)}
-        </span>
-      </div>
-    ))}
+{Object.entries(profile?.ers || {})
+  .filter(([k]) => k !== "total")
+  .map(([k, v]) => (
+    <div key={k} className="flex justify-between text-xs">
+      <span className="uppercase">{k}</span>
+      <span>{v}</span>
+    </div>
+))}
 
     <div className="mt-3 border-t pt-2 text-sm font-bold flex justify-between">
       <span>Total</span>
