@@ -41,8 +41,12 @@ const generateNarrative = (stats, fraudStats, entityERS) => {
   if (!stats || !entityERS) return "Awaiting trade data for forensic analysis...";
 
   const totalValue = (stats.totalAmt || 0).toLocaleString();
-  const highRiskEntities = entityERS.filter(e => e.priceAnomaly > 0).length;
-  const topVulnerable = entityERS.sort((a, b) => b.priceAnomaly - a.priceAnomaly)[0]?.name || "None";
+ const ersList = Object.values(entityERS || {});
+
+const highRiskEntities = ersList.filter(e => (e?.summary?.priceIssues || 0) > 0).length;
+
+const topVulnerable = ersList
+  .sort((a,b)=>(b?.summary?.priceIssues||0)-(a?.summary?.priceIssues||0))[0]?.entity || "None";
 
   return (
     <div className="space-y-4">
@@ -77,7 +81,19 @@ const [activeFilter, setActiveFilter] = useState("all");
   const [selectedEntity, setSelectedEntity] = useState(null);
   const ersData = useERS(stats);
 const mastermindData = useMastermind(stats);
+    {/* ✅ GLOBAL HEADER (ALWAYS SAFE HERE) */}
+  const globalIntel = useMemo(() => {
+  const entities = Object.values(ersData || {});
+  const high = entities.filter(e => (e?.ers?.total || 0) > 70).length;
+  const medium = entities.filter(e => (e?.ers?.total || 0) > 40).length;
 
+  return {
+    high,
+    medium,
+    total: entities.length
+  };
+}, [ersData]);
+  
 const shellScores = {};
 const [fraudStats, setFraudStats] = useState({
   vat: [],
@@ -114,9 +130,9 @@ const tradeLinks = useMemo(() => {
     value: d["Amount($)"]
   }));
 }, [data]);
- const narrative = useMemo(() => {
-  return generateNarrative(stats, fraudStats);
-}, [stats, fraudStats]);
+const narrative = useMemo(() => {
+  return generateNarrative(stats, fraudStats, Object.values(ersData || {}));
+}, [stats, fraudStats, ersData]);
   
   const handleFetch = () => {
     if (!urlInput) return;
@@ -403,8 +419,19 @@ CLEAR
         </div>
       </nav>
 
-      {data.length > 0 && (
-        <main className="max-w-7xl mx-auto p-8">
+// ---------- JSX RENDER ----------
+return (
+  <div>
+    {/* ✅ GLOBAL HEADER */}
+    <div className="mb-6 bg-black text-white p-4 rounded-2xl">
+      <div className="text-sm">High Risk: {globalIntel.high}</div>
+      <div className="text-sm">Medium Risk: {globalIntel.medium}</div>
+      <div className="text-sm">Entities: {globalIntel.total}</div>
+    </div>
+
+    {/* ✅ CONDITIONAL UI STARTS HERE */}
+{data.length > 0 && (
+  <main className="max-w-7xl mx-auto p-8">
           <div className="flex flex-wrap gap-2 mb-10 bg-slate-200 p-2 rounded-3xl shadow-inner overflow-x-auto border-2 border-slate-300">
             <TabBtn active={activeTab === 'audit'} onClick={() => setActiveTab('audit')} icon={<ListFilter size={18}/>} label="Shipment Ledger" />
 
@@ -430,7 +457,8 @@ CLEAR
 
 <TabBtn active={activeTab === 'guide'} onClick={() => setActiveTab('guide')} icon={<BookOpen size={18}/>} label="Audit Guide" />
 
-          </div>
+   </main>
+)}
 
           {/* TAB: LEDGER */}
 {activeTab === "audit" && (
@@ -485,7 +513,18 @@ CLEAR
                 <td className="p-5">
                   <div 
                     className="text-sm font-black border-b border-dotted border-slate-400 inline-block cursor-help" 
-                    title={riskTooltip}
+                    title={`
+Risk Score: ${totalRisk.toFixed(2)}
+
+Breakdown:
+Self: ${sScore}
+HS: ${hScore}
+Price: ${pScore}
+Density: ${dScore}
+
+Interpretation:
+${totalRisk > 0.7 ? "HIGH RISK" : totalRisk > 0.4 ? "MEDIUM RISK" : "LOW RISK"}
+`}
                   >
                     {totalRisk.toFixed(2)}
                   </div>
@@ -754,7 +793,7 @@ VIEW AUDIT TRAIL <ArrowRight size={16} strokeWidth={3}/>
     )}
   </div>
 )}
-          {/* TAB: FINANCIAL FORENSICS */}
+         
 {/* TAB: FINANCIAL FORENSICS */}
 {activeTab === "finance" && (
   <div className="space-y-6">
