@@ -33,7 +33,6 @@ import MassBalanceTab from "./Tabs/MassBalanceTab.jsx";
 import EntityInvestigation from "./EntityInvestigation";
 import { buildEntityProfile } from "../analytics/entityInvestigationEngine";
 import { buildEuropolSignals } from "../analytics/europolEngine";
-import { buildMastermindScores } from "../analytics/mastermindEngine";
 import { generateForensicReport } from '../utils/forensics.js';
 import useERS from "../hooks/useERS";
 import useMastermind from "../hooks/useMastermind";
