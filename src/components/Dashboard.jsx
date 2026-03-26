@@ -32,7 +32,6 @@ import { HSTab } from './Tabs/HSTab.jsx';
 import MassBalanceTab from "./Tabs/MassBalanceTab.jsx";
 import EntityInvestigation from "./EntityInvestigation";
 import { buildEntityProfile } from "../analytics/entityInvestigationEngine";
-import { buildEuropolSignals } from "../analytics/europolEngine";
 import { generateForensicReport } from '../utils/forensics.js';
 import useERS from "../hooks/useERS";
 import useMastermind from "../hooks/useMastermind";
@@ -78,61 +77,7 @@ const [activeFilter, setActiveFilter] = useState("all");
   const [selectedEntity, setSelectedEntity] = useState(null);
   const ersData = useERS(stats);
 const mastermindData = useMastermind(stats);
-  const europolMap = useMemo(() => {
-  const map = {};
-  data.forEach(r => {
-    [r.Exporter, r.Importer].forEach(e => {
-      if (!map[e]) {
-        map[e] = buildEuropolSignals(e, data, stats);
-      }
-    });
-  });
-  return map;
-}, [data, stats]);
 
-const masterminds = useMemo(() => {
-  return buildMastermindScores(data, europolMap);
-}, [data, europolMap]);
-  const [ersView, setErsView] = useState('exporter'); // 'exporter' or 'importer'
-const entityERS = useMemo(() => {
-  const entities = stats?.entityStats || {};
-  return Object.entries(entities).map(([name, s]) => {
-    // Ensure all fields exist to prevent NaN
-    const self = s?.self || 0;
-    const hs = s?.hs || 0;
-    const price = s?.price || 0;
-    const density = s?.density || 0;
-    const mlRisk = s?.mlRisk || 0;
-    const shellRisk = s?.shellRisk || 0;
-    const ringScore = s?.ringScore || 0;
-    const cycleScore = s?.cycleScore || 0;
-    const total = s?.total || 1; // Avoid division by zero
-
-    // Weighted raw score calculation
-    const raw =
-      (self * 20) +
-      (hs * 15) +
-      (price * 20) +
-      (density * 30) +
-      (mlRisk * 20) +
-      (shellRisk * 30) +
-      (ringScore * 40) +
-      (cycleScore * 35);
-
-    // Final score capped at 100
-    const final = Math.min(100, (raw / total) + (total > 10 ? 10 : 0));
-
-    return {
-      name,
-      ...s,
-      finalScore: final.toFixed(1),
-      // Ensure boolean flags exist
-      isExporter: s?.isExporter || false,
-      isImporter: s?.isImporter || false,
-      priceAnomaly: s?.priceAnomaly || 0,
-    };
-  }).sort((a, b) => b.finalScore - a.finalScore);
-}, [stats]);
 const shellScores = {};
 const [fraudStats, setFraudStats] = useState({
   vat: [],
@@ -660,13 +605,7 @@ AI Intelligence Summary
         </h2>
       </div>
       <div className="text-blue-900 font-bold">
-        {generateNarrative(
-          stats,
-          fraudStats,
-          entityERS.filter(e =>
-            ersView === 'exporter' ? e.isExporter : e.isImporter
-          )
-        )}
+{generateNarrative(stats, fraudStats, ersData || [])}
       </div>
     </div>
 
