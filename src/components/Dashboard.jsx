@@ -418,8 +418,9 @@ CLEAR
 </div>
         </div>
       </nav>
-
-    {/* ✅ CONDITIONAL UI STARTS HERE */}
+return (
+    <>
+      {/* ✅ CONDITIONAL UI STARTS HERE */}
 {data.length > 0 && (
   <main className="max-w-7xl mx-auto p-8">
 
@@ -922,8 +923,9 @@ VIEW AUDIT TRAIL <ArrowRight size={16} strokeWidth={3}/>
 )}
           {activeTab === "guide" && <GuideView />}
 </main>
-  )}
-</>; // Added a fragment close if you used one, or just the end of the return.
+      )}
+    </>
+  );
 }
 // --- SHARED COMPONENTS ---
 
