@@ -1,6 +1,6 @@
 // ========================= ERSPanel.jsx =========================
 import React, { useMemo, useState } from "react";
-import { useERS } from "../hooks/useERS";
+import useERS from "../hooks/useERS";
 import { useMastermind } from "../hooks/useMastermind";
 import EntityInvestigation from "./EntityInvestigation";
 
@@ -31,35 +31,35 @@ export default function ERSPanel({ stats }) {
   const mastermind = useMastermind(stats);
   const [selected, setSelected] = useState(null);
 
-  const entities = useMemo(() => Object.entries(ersData || {}), [ersData]);
+  const entities = ersData || [];
 
   return (
     <div className="p-4">
       <h2 className="text-xl font-bold mb-4">Trade Intelligence Panel</h2>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {(entities || []).map(([entity, profile]) => (
-          <div
-            key={entity}
-            className="border rounded-xl p-3 shadow cursor-pointer hover:bg-gray-50"
-            onClick={() => setSelected({ entity, profile })}
-          >
-            <div className="flex justify-between">
-              <h3 className="font-semibold">{entity}</h3>
-              <span className="font-bold">{profile?.ers?.total || 0}</span>
-            </div>
+{(entities || []).map((profile) => (
+  <div
+    key={profile.name}
+    className="border rounded-xl p-3 shadow cursor-pointer hover:bg-gray-50"
+    onClick={() => setSelected(profile)}
+  >
+    <div className="flex justify-between">
+      <h3 className="font-semibold">{profile.name}</h3>
+      <span className="font-bold">{profile.ersScore}</span>
+    </div>
 
-            <Bar label="HS Risk" value={profile?.ers?.hs || 0} />
-            <Bar label="Price Risk" value={profile?.ers?.price || 0} />
-            <Bar label="Network Risk" value={profile?.ers?.ringScore || 0} />
-          </div>
-        ))}
+    <Bar label="HS Risk" value={profile?.breakdown?.hs || 0} />
+    <Bar label="Price Risk" value={profile?.breakdown?.price || 0} />
+    <Bar label="Network Risk" value={profile?.breakdown?.ringScore || 0} />
+  </div>
+))}
       </div>
 
       {selected && (
         <EntityInvestigation
-          entity={selected.entity}
-          profile={selected.profile}
+  entity={selected.name}
+  profile={selected}
           mastermind={mastermind?.[selected.entity]}
           onClose={() => setSelected(null)}
         />
