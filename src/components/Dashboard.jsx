@@ -81,8 +81,8 @@ const [activeFilter, setActiveFilter] = useState("all");
   const [selectedEntity, setSelectedEntity] = useState(null);
   const ersData = useERS(stats);
 const mastermindData = useMastermind(stats);
-    {/* ✅ GLOBAL HEADER (ALWAYS SAFE HERE) */}
-  const globalIntel = useMemo(() => {
+// ✅ GLOBAL HEADER
+const globalIntel = useMemo(...)
   const entities = Object.values(ersData || {});
   const high = entities.filter(e => (e?.ers?.total || 0) > 70).length;
   const medium = entities.filter(e => (e?.ers?.total || 0) > 40).length;
@@ -94,7 +94,6 @@ const mastermindData = useMastermind(stats);
   };
 }, [ersData]);
   
-const shellScores = {};
 const [fraudStats, setFraudStats] = useState({
   vat: [],
   phantom: [],
@@ -418,8 +417,7 @@ CLEAR
 </div>
         </div>
       </nav>
-return (
-    <>
+      
       {/* ✅ CONDITIONAL UI STARTS HERE */}
 {data.length > 0 && (
   <main className="max-w-7xl mx-auto p-8">
@@ -901,7 +899,7 @@ VIEW AUDIT TRAIL <ArrowRight size={16} strokeWidth={3}/>
 <AISummary
   title="AI Forensic Summary"
   icon={AlertTriangle}
-  content={generateGlobalNarrative(stats, ersData || {})}
+  content={generateNarrative(stats, fraudStats, ersData || {})}
 />
   </div>
 )}
