@@ -580,22 +580,16 @@ ${totalRisk > 0.7 ? "HIGH RISK" : totalRisk > 0.4 ? "MEDIUM RISK" : "LOW RISK"}
   </div>
 )}
           {/* TAB: FINAL ANALYSIS (AI SUMMARY) */}
-          {activeTab==="final" && (
+{activeTab === "final" && (
+  <div className="bg-white p-8 rounded-2xl shadow">
+    <h2 className="text-2xl font-black mb-4">
+      AI Intelligence Summary
+    </h2>
 
-<div className="bg-white p-8 rounded-2xl shadow">
-
-<h2 className="text-2xl font-black mb-4">
-AI Intelligence Summary
-</h2>
-
-<pre className="whitespace-pre-wrap text-slate-700">
-
-{narrative}
-
-</pre>
-
-</div>
-
+    <pre className="whitespace-pre-wrap text-slate-700">
+      {narrative}
+    </pre>
+  </div>
 )}
 
 {/* TAB: ERS SCORING */}
@@ -903,11 +897,11 @@ VIEW AUDIT TRAIL <ArrowRight size={16} strokeWidth={3}/>
       fraudStats={fraudStats}
     />
 
-    <AISummary
-      title="Fraud Engine Summary"
-      icon={AlertTriangle}
-      content={generateNarrative(stats, fraudStats)}
-    />
+<AISummary
+  title="AI Forensic Summary"
+  icon={AlertTriangle}
+  content={generateGlobalNarrative(stats, ersData || {})}
+/>
   </div>
 )}
 
