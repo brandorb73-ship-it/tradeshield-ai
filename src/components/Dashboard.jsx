@@ -131,7 +131,7 @@ const tradeLinks = useMemo(() => {
   }));
 }, [data]);
 const narrative = useMemo(() => {
-  return generateNarrative(stats, fraudStats, Object.values(ersData || {}));
+  return generateNarrative(stats, fraudStats, ersData || {});
 }, [stats, fraudStats, ersData]);
   
   const handleFetch = () => {
@@ -633,7 +633,7 @@ AI Intelligence Summary
         </h2>
       </div>
       <div className="text-blue-900 font-bold">
-{generateNarrative(stats, fraudStats, ersData || [])}
+{generateNarrative(stats, fraudStats, ersData || {})}
       </div>
     </div>
 
