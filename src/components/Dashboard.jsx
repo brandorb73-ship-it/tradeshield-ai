@@ -928,8 +928,8 @@ VIEW AUDIT TRAIL <ArrowRight size={16} strokeWidth={3}/>
 )}
           {activeTab === "guide" && <GuideView />}
 </main>
-)}
-);
+  )}
+</>; // Added a fragment close if you used one, or just the end of the return.
 }
 // --- SHARED COMPONENTS ---
 
