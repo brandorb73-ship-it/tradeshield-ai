@@ -931,11 +931,10 @@ VIEW AUDIT TRAIL <ArrowRight size={16} strokeWidth={3}/>
   </div>
 )}
           {activeTab === "guide" && <GuideView />}
-      </main>
+</main>
 )}
-    </div>
-  );   
-} 
+);
+}
 // --- SHARED COMPONENTS ---
 
 function TabBtn({ active, onClick, icon, label }) {
