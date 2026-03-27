@@ -630,220 +630,372 @@ ${totalRisk > 0.7 ? "HIGH RISK" : totalRisk > 0.4 ? "MEDIUM RISK" : "LOW RISK"}
       </div>
     </div>
 
-return (
-    <>
-      {/* ✅ MAIN CONDITIONAL WRAPPER */}
-      {data.length > 0 && (
-        <main className="max-w-7xl mx-auto p-8">
+ {/* METHODOLOGY FOOTER */}
+      <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6 border-t-2 border-slate-200 pt-8">
+        <div>
+          <h4 className="text-[10px] font-black uppercase text-slate-400 mb-2">What is ERS?</h4>
+          <p className="text-xs text-slate-600">Weighted forensic index (0-100) aggregating trade patterns.</p>
+        </div>
+        <div>
+          <h4 className="text-[10px] font-black uppercase text-slate-400 mb-2">Brand Median Logic</h4>
+          <p className="text-xs text-slate-600">Baselines calculated via $Total Value / Total Weight$.</p>
+        </div>
+        <div>
+          <h4 className="text-[10px] font-black uppercase text-slate-400 mb-2">Responsibility</h4>
+          <p className="text-xs text-slate-600">Exporters declare the data; Importers are flagged as high-risk counterparties.</p>
+        </div>
+      </div>
 
-          {/* ✅ GLOBAL HEADER */}
-          <div className="mb-6 bg-black text-white p-6 rounded-2xl flex justify-between items-center shadow-2xl border-b-4 border-slate-800">
-            <div className="flex gap-8">
+      {/* ✅ REMOVED THE PREMATURE CLOSING HERE */}
+
+      {/* TAB: MASS BALANCE */}
+{activeTab === "mass" && (
+  <MassBalanceTab stats={stats} /> 
+)}
+
+{activeTab === "self" && (
+  <div className="animate-in fade-in space-y-8">
+    {/* 1. HEADER STATS - Compact Version */}
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="bg-red-700 p-6 rounded-[2rem] text-white shadow-xl border-b-4 border-red-900">
+        <div className="text-[9px] font-black uppercase opacity-80 tracking-widest">Circular Trade Volume</div>
+        <div className="text-3xl font-black mt-1">
+          ${(stats.totalCircularVolume || 0).toLocaleString()}
+        </div>
+      </div>
+      
+      <div className="bg-slate-900 p-6 rounded-[2rem] text-white shadow-xl md:col-span-2 flex items-center justify-between border-b-4 border-slate-950">
+        <div>
+          <div className="text-[9px] font-black uppercase text-blue-400 tracking-widest">Risk Entities Identified</div>
+          <div className="text-3xl font-black mt-1">
+            {Object.keys(stats.selfTradeData || {}).length} Unique Actors
+          </div>
+        </div>
+        <div className="bg-slate-800 p-3 rounded-full">
+          <AlertCircle size={28} className="text-red-500" />
+        </div>
+      </div>
+    </div>
+
+    {/* 2. ENTITY BREAKDOWN GRID */}
+    <div className="space-y-6">
+      {Object.entries(stats.selfTradeData || {}).sort((a,b) => b[1].amount - a[1].amount).map(([entity, data]) => (
+        <div key={entity} className="bg-white border-4 border-slate-900 rounded-[2.5rem] overflow-hidden shadow-xl">
+          {/* Entity Header */}
+          <div className="bg-slate-900 p-5 flex justify-between items-center text-white">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-red-600 rounded-full flex items-center justify-center font-black">{entity.charAt(0)}</div>
               <div>
-                <div className="text-[10px] uppercase font-black opacity-50">High Risk</div>
-                <div className="text-xl font-black text-red-500">{globalIntel.high}</div>
-              </div>
-              <div>
-                <div className="text-[10px] uppercase font-black opacity-50">Medium Risk</div>
-                <div className="text-xl font-black text-orange-400">{globalIntel.medium}</div>
-              </div>
-              <div>
-                <div className="text-[10px] uppercase font-black opacity-50">Total Entities</div>
-                <div className="text-xl font-black">{globalIntel.total}</div>
+                <div className="text-[10px] text-slate-400 font-black uppercase">Forensic Entity ID</div>
+                <div className="font-black text-xl leading-tight uppercase tracking-tight">{entity}</div>
               </div>
             </div>
-            <div className="font-black italic tracking-tighter text-2xl">TRADESHIELD <span className="text-blue-500">AI</span></div>
+            <div className="bg-red-600 text-[10px] px-3 py-1 rounded-full font-black">CRITICAL RISK</div>
           </div>
 
-          {/* ✅ NAVIGATION TABS */}
-          <div className="flex flex-wrap gap-2 mb-10 bg-slate-200 p-2 rounded-3xl shadow-inner overflow-x-auto border-2 border-slate-300">
-            <TabBtn active={activeTab === 'audit'} onClick={() => setActiveTab('audit')} label="Shipment Ledger" />
-            <TabBtn active={activeTab === 'ers'} onClick={() => setActiveTab('ers')} label="ERS Score" />
-            <TabBtn active={activeTab === 'networkGraph'} onClick={() => setActiveTab('networkGraph')} label="Trade Network" />
-            <TabBtn active={activeTab === 'mass'} onClick={() => setActiveTab('mass')} label="Mass Balance" />
-            <TabBtn active={activeTab === 'self'} onClick={() => setActiveTab('self')} label="Self Trade" />
-            <TabBtn active={activeTab === 'finance'} onClick={() => setActiveTab('finance')} label="Financial" />
-            <TabBtn active={activeTab === 'map'} onClick={() => setActiveTab('map')} label="Map" />
-            <TabBtn active={activeTab === 'heat'} onClick={() => setActiveTab('heat')} label="Heatmap" />
-            <TabBtn active={activeTab === 'hs'} onClick={() => setActiveTab('hs')} label="HS" />
-            <TabBtn active={activeTab === 'fraud'} onClick={() => setActiveTab('fraud')} label="Fraud" />
-            <TabBtn active={activeTab === 'final'} onClick={() => setActiveTab('final')} label="AI" />
-            <TabBtn active={activeTab === 'guide'} onClick={() => setActiveTab('guide')} label="Guide" />
-          </div>
-
-          {/* ✅ TAB CONTENT LOGIC */}
-          <div className="min-h-[600px]">
-            
-            {activeTab === "audit" && (
-              <div className="animate-in fade-in space-y-6">
-                <div className="bg-white rounded-[2rem] shadow-2xl border-4 border-slate-900 overflow-hidden">
-                  <table className="w-full text-left border-collapse">
-                    <thead className="bg-slate-900 text-white text-[10px] font-black uppercase">
-                      <tr>
-                        <th className="p-5">Risk Flag</th>
-                        <th className="p-5">Date</th>
-                        <th className="p-5">Entity Involved</th>
-                        <th className="p-5">Brand / HS</th>
-                        <th className="p-5">Route</th>
-                        <th className="p-5 text-right">Weight (Kg)</th>
-                        <th className="p-5 text-right">Amount ($)</th>
-                        <th className="p-5 text-right">Qty</th>
-                        <th className="p-5 text-right">Density</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y-2 divide-slate-100 text-slate-800 font-bold">
-                      {filteredData.map((row, i) => (
-                        <tr key={i} className={`${row._isSelf ? 'bg-red-50' : 'hover:bg-slate-50'} border-b border-slate-100 transition-colors`}>
-                          <td className="p-5">
-                            <div className="text-sm font-black border-b border-dotted border-slate-400 inline-block">
-                               {( (row._isSelf?0.3:0) + (row._isHS?0.2:0) + (row._isPrice?0.3:0) ).toFixed(2)}
-                            </div>
-                          </td>
-                          <td className="p-5 text-xs text-slate-500 font-bold">{row.Date}</td>
-                          <td className="p-5">
-                            <div className="text-sm font-black uppercase truncate max-w-[140px]">{row.Exporter}</div>
-                            <div className="text-[11px] text-blue-800 font-black uppercase mt-0.5 italic">To: {row.Importer}</div>
-                          </td>
-                          <td className="p-5">
-                            <div className="text-sm font-black uppercase">{row.Brand}</div>
-                            <div className="text-[11px] text-slate-900 font-black mt-0.5">HS: {row["HS Code"]}</div>
-                          </td>
-                          <td className="p-5">
-                            <div className="text-[11px] font-black uppercase flex items-center gap-1 text-slate-700">
-                              {row["Origin Country"]} <ArrowRight size={10} strokeWidth={3}/> {row["Destination Country"]}
-                            </div>
-                          </td>
-                          <td className="p-5 text-right font-black">{(row["Weight(Kg)"] || 0).toLocaleString()}</td>
-                          <td className="p-5 text-right font-black">${(row["Amount($)"] || 0).toLocaleString()}</td>
-                          <td className="p-5 text-right font-black">{row.Quantity}</td>
-                          <td className="p-5 text-right font-mono text-xs">{(row["Weight(Kg)"] / (row.Quantity || 1)).toFixed(4)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+          {/* Risk & Network Analysis Section */}
+          <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-12 border-b-2 border-slate-100">
+            <div>
+              <h3 className="text-blue-600 font-black text-[11px] uppercase mb-4 tracking-widest">Risk Analysis</h3>
+              <div className="bg-red-50 border-2 border-red-100 rounded-3xl p-6">
+                <div className="text-red-800 font-black text-sm mb-2 uppercase">CRITICAL: CIRCULAR TRADE DETECTED</div>
+                <p className="text-[13px] text-red-700 leading-relaxed font-bold">
+                  Entity is shipping goods to itself. This is a primary indicator of <span className="underline">VAT Carousel Fraud</span> or <span className="underline">Trade-Based Money Laundering</span>.
+                </p>
               </div>
-            )}
+            </div>
 
-            {activeTab === "ers" && (
-              <ERSPanel data={data} stats={stats} ersData={ersData} mastermindData={mastermindData} onSelectEntity={setSelectedEntity} />
-            )}
-
-            {activeTab === "mass" && <MassBalanceTab stats={stats} />}
-
-            {activeTab === "self" && (
-              <div className="animate-in fade-in space-y-8">
-                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="bg-red-700 p-6 rounded-[2rem] text-white shadow-xl border-b-4 border-red-900">
-                       <div className="text-[9px] font-black uppercase opacity-80">Circular Trade Volume</div>
-                       <div className="text-3xl font-black mt-1">${(stats.totalCircularVolume || 0).toLocaleString()}</div>
-                    </div>
-                 </div>
-                 {Object.entries(stats.selfTradeData || {}).map(([entity, d]) => (
-                    <div key={entity} className="bg-white border-4 border-slate-900 rounded-[2.5rem] overflow-hidden shadow-xl p-8">
-                       <h3 className="font-black text-xl uppercase">{entity}</h3>
-                       <div className="text-4xl font-black text-red-700">${d.amount.toLocaleString()}</div>
-                    </div>
-                 ))}
-              </div>
-            )}
-
-            {activeTab === "finance" && (
-              <div className="space-y-6">
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="bg-slate-100 p-4 rounded-xl">
-                    <div className="text-sm text-slate-500">Median Price</div>
-                    <div className="text-xl font-bold">${fin.avgPrice?.toFixed(2)}</div>
-                  </div>
-                  <div className="bg-red-100 p-4 rounded-xl">
-                    <div className="text-sm text-red-600">Tax Loss Est.</div>
-                    <div className="text-xl font-bold">${fin.taxLoss.toLocaleString()}</div>
-                  </div>
-                </div>
-                {fin.anomalies.slice(0, 10).map((a, i) => (
-                  <div key={i} className="border p-4 rounded-2xl bg-red-50 border-red-100">
-                    <div className="font-black uppercase">{a.entity}</div>
-                    <div className="text-sm text-red-600 font-bold">{a.reason}</div>
-                  </div>
+            <div>
+              <h3 className="text-blue-600 font-black text-[11px] uppercase mb-4 tracking-widest">Network Footprint</h3>
+              <div className="flex flex-wrap gap-2 mb-6">
+                {(data.countries || []).map(c => (
+                  <span key={c} className="bg-slate-900 text-white text-[11px] font-black px-4 py-2 rounded-full uppercase tracking-wide">
+                    {c}
+                  </span>
                 ))}
               </div>
-            )}
-
-            {activeTab === "map" && (
-              <div className="bg-slate-900 p-12 rounded-[4rem] text-white animate-in fade-in">
-                {Object.entries(stats.routeIntel || {}).map(([route, d]) => (
-                  <div key={route} className="p-6 bg-slate-800 rounded-3xl border-2 border-slate-700 flex justify-between mb-4">
-                    <div className="text-2xl font-black text-blue-400">{route}</div>
-                    <div className="text-right font-black">${(d.amount || 0).toLocaleString()}</div>
-                  </div>
-                ))}
+              <div className="text-sm font-black text-slate-800 leading-relaxed">
+                <span className="text-slate-400 uppercase text-[10px] block mb-1">Associated Brands:</span>
+                {data.brands?.join(', ')}
               </div>
-            )}
-
-            {activeTab === "networkGraph" && (
-              <div className="bg-white p-10 rounded-3xl border-4 border-slate-900 shadow-xl">
-                <NetworkGraph data={data} fraudStats={fraudStats} rings={intel.rings} />
-              </div>
-            )}
-
-            {activeTab === "guide" && <GuideView />}
-            
-            {activeTab === "final" && (
-              <div className="bg-white p-8 rounded-2xl shadow border-4 border-slate-900">
-                <h2 className="text-2xl font-black mb-4">AI Intelligence Summary</h2>
-                <pre className="whitespace-pre-wrap text-slate-700 font-bold leading-relaxed">{narrative}</pre>
-              </div>
-            )}
-
-          </div>
-
-          {/* ✅ GLOBAL OVERLAYS (Outside Tab logic but inside Main) */}
-          {selectedEntity && (
-            <EntityInvestigation
-              entity={selectedEntity}
-              data={data}
-              stats={stats}
-              fraudStats={fraudStats}
-              onSelectEntity={(e) => setSelectedEntity(e)}
-            />
-          )}
-
-          {/* METHODOLOGY FOOTER */}
-          <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6 border-t-2 border-slate-200 pt-8 pb-20">
-            <div>
-              <h4 className="text-[10px] font-black uppercase text-slate-400 mb-2">Forensic ERS</h4>
-              <p className="text-xs text-slate-600">Weighted risk index (0-100) aggregating circular trade and price deviation.</p>
-            </div>
-            <div>
-              <h4 className="text-[10px] font-black uppercase text-slate-400 mb-2">System BrandOrb</h4>
-              <p className="text-xs text-slate-600">Visualizing trade anomalies via light-grey corporate aesthetic.</p>
-            </div>
-            <div>
-              <h4 className="text-[10px] font-black uppercase text-slate-400 mb-2">Legal Warning</h4>
-              <p className="text-xs text-slate-600">Data flagged here indicates high probability of illicit trade patterns.</p>
             </div>
           </div>
 
-        </main>
+          {/* Footer Financials - Bigger Font Focus */}
+          <div className="px-8 py-8 bg-slate-50 flex flex-wrap justify-between items-center gap-4">
+            <div className="flex gap-12">
+              <div>
+                <div className="text-[10px] font-black uppercase text-slate-400 mb-1">Circular Amount</div>
+                <div className="text-4xl font-black text-red-700 tracking-tighter">${data.amount.toLocaleString()}</div>
+              </div>
+              <div>
+                <div className="text-[10px] font-black uppercase text-slate-400 mb-1">Net Weight (KG)</div>
+                <div className="text-4xl font-black text-slate-900 tracking-tighter">{data.weight.toLocaleString()}</div>
+              </div>
+            </div>
+            <button 
+              onClick={() => { setActiveFilter('self'); setActiveTab('audit'); }}
+              className="bg-white border-4 border-slate-900 px-8 py-3 rounded-2xl text-[12px] font-black hover:bg-slate-900 hover:text-white transition-all flex items-center gap-2 shadow-lg"
+            >
+VIEW AUDIT TRAIL <ArrowRight size={16} strokeWidth={3}/>
+            </button>
+            <button 
+  onClick={() => generateForensicReport(entity, data)}
+  className="bg-red-50 text-red-700 border-2 border-red-200 px-6 py-3 rounded-2xl text-[12px] font-black hover:bg-red-700 hover:text-white transition-all flex items-center gap-2"
+>
+  DOWNLOAD FORENSIC DOSSIER
+</button>
+          </div>
+        </div>
+      ))}
+    </div>
+
+    {/* 3. AI SUMMARY FOR SELF TRADE - Now correctly inside the "self" tab block */}
+    {Object.keys(stats.selfTradeData || {}).length > 0 && (
+      <AISummary
+        title="Circular Trade Intel"
+        icon={typeof AlertCircle !== 'undefined' ? AlertCircle : ShieldAlert}
+        content={`Detected ${Object.keys(stats.selfTradeData).length} entities acting as both Exporter and Importer. The largest actor accounts for $${(Object.values(stats.selfTradeData).sort((a,b) => b.amount - a.amount)[0]?.amount || 0).toLocaleString()} of the wash-trade volume.`}
+      />
+    )}
+  </div>
+)}
+         
+{/* TAB: FINANCIAL FORENSICS */}
+{activeTab === "finance" && (
+  <div className="space-y-6">
+    <h2 className="text-2xl font-black">Financial Forensics Intelligence</h2>
+
+    {/* Summary Row */}
+    <div className="grid grid-cols-3 gap-4">
+      <div className="bg-slate-100 p-4 rounded-xl">
+        <div className="text-sm text-slate-500">Median Price</div>
+        <div className="text-xl font-bold">${fin.avgPrice?.toFixed(2)}</div>
+      </div>
+      <div className="bg-slate-100 p-4 rounded-xl">
+        <div className="text-sm text-slate-500">Anomaly Rate</div>
+        <div className="text-xl font-bold">{fin.anomalyRate}%</div>
+      </div>
+      <div className="bg-red-100 p-4 rounded-xl">
+        <div className="text-sm text-red-600">Estimated Tax Loss</div>
+        <div className="text-xl font-bold">${fin.taxLoss.toLocaleString()}</div>
+      </div>
+    </div>
+
+    {/* Anomalies List */}
+    <div>
+      <h3 className="text-lg font-bold mb-3 text-red-600">Value Manipulation Signals</h3>
+      {fin.anomalies.slice(0,20).map((a, i) => (
+        <div key={i} className="border p-3 mb-2 rounded bg-red-50">
+          <div className="font-bold">{a.entity}</div>
+          <div className="text-sm">
+            Price: ${a.price} vs Median ${a.median}<br/>
+            Deviation: {a.deviation}%<br/>
+            Weight: {a.weight} KG<br/>
+            Value: ${a.amount.toLocaleString()}<br/>
+            <span className="text-red-600 font-semibold">{a.reason}</span>
+          </div>
+        </div>
+      ))} {/* <--- Ensure this is closed */}
+    </div>
+
+    {/* Clusters List */}
+    <div>
+      <h3 className="text-lg font-bold mb-3 text-blue-600">Invoice Pattern Clusters</h3>
+      {fin.clusters.map((c, i) => (
+        <div key={i} className="text-sm border-b py-2">
+          <b>{c.exporter}</b> → Price Band ${c.priceBand}<br/>
+          Shipments: {c.shipments} | Value: ${c.totalValue.toLocaleString()}
+        </div>
+      ))} {/* <--- Ensure this is closed */}
+    </div>
+
+    <AISummary
+      title="Financial Risk Insight"
+      icon={DollarSign}
+      content={`Anomaly rate is ${fin.anomalyRate}%. Estimated tax leakage: $${fin.taxLoss.toLocaleString()}.`}
+    />
+  </div>
+)}
+          {/* TAB: MAP INTEL */}
+{activeTab === "map" && (
+  <div className="bg-slate-900 p-12 rounded-[4rem] text-white animate-in fade-in">
+    <h2 className="text-3xl font-black uppercase mb-10 flex items-center gap-4">
+      <Globe className="text-blue-500"/> Trade Corridor Density
+    </h2>
+    <div className="space-y-4">
+      {/* Object.entries converts the corridors object into a loopable list */}
+      {Object.entries(stats.routeIntel || {}).map(([route, d]) => (
+        <div key={route} className="p-8 bg-slate-800 rounded-[2rem] border-2 border-slate-700 flex justify-between items-center">
+          <div>
+            <div className="text-3xl font-black uppercase tracking-tighter text-blue-400">{route}</div>
+            <div className="flex flex-wrap gap-2 mt-3">
+              {/* Convert the Set to an Array for rendering */}
+              {Array.from(d.entities || []).map(e => (
+                <span key={e} className="text-[10px] font-black bg-slate-700 px-3 py-1 rounded text-slate-300 border border-slate-600 uppercase">
+                  {e}
+                </span>
+              ))}
+            </div>
+          </div>
+          <div className="text-right">
+            <div className="text-2xl font-black text-white">
+              ${(d.amount || 0).toLocaleString()}
+            </div>
+            <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
+              {(d.weight || 0).toFixed(0)} KG TRANSACTED
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+    
+    <div className="mt-10">
+      <AISummary
+        title="Corridor Intelligence"
+        icon={Globe}
+        content={`High-volume corridors detected: ${Object.keys(stats.routeIntel || {}).length}. Major liquidity flow identified across ${Object.keys(stats.routeIntel || {}).length} routes.`}
+      />
+    </div>
+  </div>
+)}
+          
+{/* TAB: FRAUD HEATMAP */}
+{activeTab === "heat" && (
+  <div className="bg-black p-6 rounded-2xl">
+      <RouteRiskMap 
+  data={data} 
+  fraudStats={fraudStats}
+  corridors={intel.corridors}
+/>
+  </div>
+)}
+         {/* TAB: HS INTEL */}
+{activeTab === "hs" && (
+  <HSTab 
+    stats={stats} 
+    AISummary={AISummary} // Passing the AI summary component as a prop
+  />
+)}
+
+{activeTab === "fraud" && (
+  <div>
+    <FraudIntelligenceCard 
+      stats={stats}
+      fraudStats={fraudStats}
+    />
+
+<AISummary
+  title="AI Forensic Summary"
+  icon={AlertTriangle}
+  content={generateNarrative(stats, fraudStats, ersData || {})}
+/>
+  </div>
+)}
+
+{/* TAB: NETWORK GRAPH */}
+{activeTab === "networkGraph" && (
+  <div className="bg-white p-10 rounded-3xl border-4 border-slate-900 shadow-xl">
+      <NetworkGraph 
+  data={data} 
+  fraudStats={fraudStats}
+  rings={intel.rings}
+/>
+    <AISummary
+      title="Network Intelligence"
+      icon={Layers}
+      content={`Detected ${intel?.rings?.length || 0} potential fraud rings in the trade network.`}
+    />
+  </div>
+)}
+          {activeTab === "guide" && <GuideView />}
+</main>
       )}
-    </>
+    </div>
   );
 }
+// --- SHARED COMPONENTS ---
 
-// --- SHARED COMPONENTS (OUTSIDE DASHBOARD FUNCTION) ---
-
-function TabBtn({ active, onClick, label }) {
-  return (
-    <button 
-      onClick={onClick} 
-      className={`px-6 py-4 rounded-2xl font-black text-xs uppercase tracking-tight transition-all shrink-0 
-      ${active ? 'bg-slate-900 text-white shadow-xl scale-105' : 'text-slate-800 hover:bg-slate-300'}`}
-    >
-      {label}
-    </button>
-  );
+function TabBtn({ active, onClick, icon, label }) {
+    return (
+        <button onClick={onClick} className={`flex items-center gap-2 px-6 py-4 rounded-2xl font-black text-sm uppercase tracking-tight transition-all shrink-0 ${active ? 'bg-slate-900 text-white shadow-xl scale-110 z-10' : 'text-slate-800 hover:text-blue-600'}`}>
+            {icon} {label}
+        </button>
+    );
 }
 
+function SummaryCard({ label, value, color }) {
+    const colors = { red: 'text-red-700', blue: 'text-blue-700', purple: 'text-purple-700' };
+    return (
+        <div className="p-8 bg-slate-50 rounded-3xl border-2 border-slate-200 text-center">
+            <div className="text-sm font-black text-slate-700 uppercase mb-2">{label}</div>
+            <div className={`text-4xl font-black ${colors[color]}`}>{value}</div>
+        </div>
+    );
+}
+
+function StatBox({ label, val }) {
+    return (
+        <div className="bg-slate-50 p-6 rounded-2xl border-2 border-slate-100">
+            <div className="text-xs font-black text-slate-700 uppercase mb-2">{label}</div>
+            <div className="text-xl font-black text-slate-900">{val}</div>
+        </div>
+    );
+}
+
+function GuideView() {
+    return (
+        <div className="bg-white p-12 rounded-[3rem] shadow-2xl border-4 border-slate-900">
+            <h2 className="text-3xl font-black uppercase mb-10 border-b-8 border-blue-600 w-fit">Audit Logic Definitions</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <GuideItem title="ERS Score (Weighted Risk)" logic="High Score = Critical Alert" desc="Calculated by weighting suspicious events: (SelfTrade x3, HS Mismatch x2, Price Anomaly x5) / Total Transactions. Scores > 50 indicate systemic manipulation." />
+                <GuideItem title="Price Anomaly Intelligence" logic="±30% Baseline Deviation" desc="Identifies potential capital flight or tax evasion. Transaction prices are compared to the brand's average unit price across the entire dataset." />
+                <GuideItem title="Mass Balance Reconstruction" logic="Inward Weight vs Outward Weight" desc="Forensic tool that flags entities acting as transit hubs. High parity (e.g. 98%) suggests goods are not being consumed or processed locally." />
+                <GuideItem title="Circular Trade (Self-Trade)" logic="Exporter === Importer" desc="Identifies transactions where the beneficiary and sender are the same legal entity, a classic sign of round-tripping for VAT fraud." />
+      <GuideItem 
+  title="Fraud Rings Detection"
+  logic="Graph Loop Analysis"
+  desc="Identifies multi-entity trade loops indicating cartel coordination or VAT carousel fraud."
+/>
+
+<GuideItem 
+  title="Shell Entity Probability"
+  logic="Behavioral + Network Scoring"
+  desc="Scores entities based on abnormal routing, low diversity, and circular trade patterns."
+/>
+
+<GuideItem 
+  title="Cycle Detection"
+  logic="Recursive Trade Loop Detection"
+  desc="Finds repeated circular trade paths used for laundering or tax arbitrage."
+/>
+
+<GuideItem 
+  title="Corridor Heatmap"
+  logic="Route Risk Aggregation"
+  desc="Maps high-risk smuggling corridors based on anomaly density and trade volume."
+/>
+
+<GuideItem 
+  title="ML Anomaly Detection"
+  logic="Outlier Ranking"
+  desc="Identifies top 1% abnormal transactions using statistical and behavioral signals."
+/>
+            </div>
+        </div>
+    );
+}
+
+function GuideItem({ title, logic, desc }) {
+    return (
+        <div className="p-8 bg-slate-50 rounded-[2rem] border-2 border-slate-200">
+            <h4 className="text-2xl font-black text-slate-900 uppercase mb-2">{title}</h4>
+            <code className="bg-blue-600 text-white px-4 py-1 rounded-md text-sm font-black mb-4 block w-fit">{logic}</code>
+            <p className="text-base font-bold text-slate-800 leading-relaxed">{desc}</p>
+        </div>
+    );
+}
+// Place your AISummary component HERE (outside the Dashboard function)
 const AISummary = ({ title, content, icon: Icon }) => (
   <div className="bg-blue-50 border-2 border-blue-200 p-6 rounded-3xl mt-8">
     <div className="flex items-center gap-2 mb-3 text-blue-900 font-black uppercase text-sm">
@@ -853,24 +1005,4 @@ const AISummary = ({ title, content, icon: Icon }) => (
       {content}
     </div>
   </div>
-);
-
-function GuideView() {
-  return (
-    <div className="bg-white p-12 rounded-[3rem] shadow-2xl border-4 border-slate-900">
-      <h2 className="text-3xl font-black uppercase mb-10 border-b-8 border-blue-600 w-fit">Audit Logic</h2>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        <div className="p-8 bg-slate-50 rounded-[2rem] border-2 border-slate-200">
-           <h4 className="text-xl font-black uppercase mb-2">Circular Trade</h4>
-           <code className="bg-blue-600 text-white px-2 py-1 rounded text-xs mb-4 block w-fit">Exporter === Importer</code>
-           <p className="text-sm font-bold text-slate-700">Detects round-tripping fraud and money laundering loops.</p>
-        </div>
-        <div className="p-8 bg-slate-50 rounded-[2rem] border-2 border-slate-200">
-           <h4 className="text-xl font-black uppercase mb-2">Price Anomaly</h4>
-           <code className="bg-red-600 text-white px-2 py-1 rounded text-xs mb-4 block w-fit">±30% Median Dev</code>
-           <p className="text-sm font-bold text-slate-700">Flags potential over/under invoicing for tax evasion.</p>
-        </div>
-      </div>
-    </div>
-  );
-}
+);      
