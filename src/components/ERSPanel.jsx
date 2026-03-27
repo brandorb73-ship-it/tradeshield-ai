@@ -1,7 +1,7 @@
 // ========================= ERSPanel.jsx =========================
 import React, { useMemo, useState } from "react";
 import useERS from "../hooks/useERS";
-import { useMastermind } from "../hooks/useMastermind";
+import useMastermind from "../hooks/useMastermind";
 import EntityInvestigation from "./EntityInvestigation";
 
 const getColor = (value) => {
