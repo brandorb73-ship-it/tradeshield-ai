@@ -82,10 +82,14 @@ const [activeFilter, setActiveFilter] = useState("all");
   const ersData = useERS(stats);
 const mastermindData = useMastermind(stats);
 // ✅ GLOBAL HEADER
-const globalIntel = useMemo(...)
+const globalIntel = useMemo(() => {
   const entities = Object.values(ersData || {});
+
   const high = entities.filter(e => (e?.ers?.total || 0) > 70).length;
-  const medium = entities.filter(e => (e?.ers?.total || 0) > 40).length;
+  const medium = entities.filter(e => {
+    const score = e?.ers?.total || 0;
+    return score > 40 && score <= 70;
+  }).length;
 
   return {
     high,
