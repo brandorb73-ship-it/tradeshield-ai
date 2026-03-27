@@ -597,56 +597,67 @@ ${totalRisk > 0.7 ? "HIGH RISK" : totalRisk > 0.4 ? "MEDIUM RISK" : "LOW RISK"}
 
 {/* TAB: ERS SCORING */}
 {activeTab === "ers" && (
-  <ERSPanel
-    data={data}
-    stats={stats}
-    ersData={ersData}
-    mastermindData={mastermindData}
-    onSelectEntity={setSelectedEntity}
-  />
-)}
+  <main className="max-w-7xl mx-auto p-8 space-y-6">
 
-    {/* INVESTIGATION PANEL */}
+    {/* 🔥 AI FORENSIC SUMMARY */}
+    <div className="bg-gradient-to-r from-slate-900 to-blue-900 text-white p-6 rounded-2xl shadow-lg">
+      <div className="flex items-center gap-3 mb-3">
+        <Brain size={24} />
+        <h2 className="text-lg font-bold uppercase tracking-wide">
+          AI Intelligence Brief
+        </h2>
+      </div>
+      <p className="text-sm leading-relaxed opacity-90">
+        {generateNarrative(stats, fraudStats, ersData || {})}
+      </p>
+    </div>
+
+    {/* 🔥 ERS PANEL */}
+    <ERSPanel
+      stats={stats}
+    />
+
+    {/* 🔥 INVESTIGATION MODAL (ONLY IN ERS TAB) */}
     {selectedEntity && (
       <EntityInvestigation
         entity={selectedEntity}
-        data={data}
-        stats={stats}
-        fraudStats={fraudStats}
-        onSelectEntity={(e) => setSelectedEntity(e)}
+        profile={selectedEntity}
+        onClose={() => setSelectedEntity(null)}
       />
     )}
 
-    {/* AI FORENSIC SUMMARY */}
-    <div className="bg-blue-50 p-8 rounded-[2.5rem] border-4 border-blue-900 mt-10">
-      <div className="flex items-center gap-3 mb-4 text-blue-900">
-        <Brain size={32} />
-        <h2 className="text-2xl font-black uppercase italic">
-          AI Forensic Intelligence
-        </h2>
+    {/* 🔥 FOOTER (ONLY HERE, NOT GLOBAL) */}
+    <div className="mt-10 grid grid-cols-1 md:grid-cols-3 gap-6 border-t pt-6">
+      <div>
+        <h4 className="text-[10px] font-bold uppercase text-slate-400 mb-2">
+          ERS Model
+        </h4>
+        <p className="text-xs text-slate-600">
+          Composite risk score (0–100) based on trade anomalies and network signals.
+        </p>
       </div>
-      <div className="text-blue-900 font-bold">
-{generateNarrative(stats, fraudStats, ersData || {})}
+
+      <div>
+        <h4 className="text-[10px] font-bold uppercase text-slate-400 mb-2">
+          Price Baseline
+        </h4>
+        <p className="text-xs text-slate-600">
+          Derived from value-to-weight ratios across entities.
+        </p>
+      </div>
+
+      <div>
+        <h4 className="text-[10px] font-bold uppercase text-slate-400 mb-2">
+          Interpretation
+        </h4>
+        <p className="text-xs text-slate-600">
+          Higher scores indicate clustering of suspicious trade behaviour.
+        </p>
       </div>
     </div>
 
- {/* METHODOLOGY FOOTER */}
-      <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6 border-t-2 border-slate-200 pt-8">
-        <div>
-          <h4 className="text-[10px] font-black uppercase text-slate-400 mb-2">What is ERS?</h4>
-          <p className="text-xs text-slate-600">Weighted forensic index (0-100) aggregating trade patterns.</p>
-        </div>
-        <div>
-          <h4 className="text-[10px] font-black uppercase text-slate-400 mb-2">Brand Median Logic</h4>
-          <p className="text-xs text-slate-600">Baselines calculated via $Total Value / Total Weight$.</p>
-        </div>
-        <div>
-          <h4 className="text-[10px] font-black uppercase text-slate-400 mb-2">Responsibility</h4>
-          <p className="text-xs text-slate-600">Exporters declare the data; Importers are flagged as high-risk counterparties.</p>
-        </div>
-      </div>
-
-      {/* ✅ REMOVED THE PREMATURE CLOSING HERE */}
+  </main>
+)}
 
       {/* TAB: MASS BALANCE */}
 {activeTab === "mass" && (
