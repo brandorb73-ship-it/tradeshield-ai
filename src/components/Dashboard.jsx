@@ -630,40 +630,25 @@ ${totalRisk > 0.7 ? "HIGH RISK" : totalRisk > 0.4 ? "MEDIUM RISK" : "LOW RISK"}
       </div>
     </div>
 
-    {/* METHODOLOGY FOOTER */}
-    <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6 border-t-2 border-slate-200 pt-8">
-      <div>
-        <h4 className="text-[10px] font-black uppercase text-slate-400 mb-2">
-          What is ERS?
-        </h4>
-        <p className="text-xs text-slate-600">
-          Weighted forensic index (0-100) aggregating trade patterns.
-        </p>
+ {/* METHODOLOGY FOOTER */}
+      <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6 border-t-2 border-slate-200 pt-8">
+        <div>
+          <h4 className="text-[10px] font-black uppercase text-slate-400 mb-2">What is ERS?</h4>
+          <p className="text-xs text-slate-600">Weighted forensic index (0-100) aggregating trade patterns.</p>
+        </div>
+        <div>
+          <h4 className="text-[10px] font-black uppercase text-slate-400 mb-2">Brand Median Logic</h4>
+          <p className="text-xs text-slate-600">Baselines calculated via $Total Value / Total Weight$.</p>
+        </div>
+        <div>
+          <h4 className="text-[10px] font-black uppercase text-slate-400 mb-2">Responsibility</h4>
+          <p className="text-xs text-slate-600">Exporters declare the data; Importers are flagged as high-risk counterparties.</p>
+        </div>
       </div>
 
-      <div>
-        <h4 className="text-[10px] font-black uppercase text-slate-400 mb-2">
-          Brand Median Logic
-        </h4>
-        <p className="text-xs text-slate-600">
-          Baselines calculated via $Total Value / Total Weight$.
-        </p>
-      </div>
+      {/* ✅ REMOVED THE PREMATURE CLOSING HERE */}
 
-      <div>
-        <h4 className="text-[10px] font-black uppercase text-slate-400 mb-2">
-          Responsibility
-        </h4>
-        <p className="text-xs text-slate-600">
-          Exporters declare the data; Importers are flagged as high-risk counterparties.
-        </p>
-      </div>
-    </div>
-
-  </div>
-)}
-          
-         {/* TAB: MASS BALANCE */}
+      {/* TAB: MASS BALANCE */}
 {activeTab === "mass" && (
   <MassBalanceTab stats={stats} /> 
 )}
