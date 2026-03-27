@@ -426,12 +426,6 @@ CLEAR
 {data.length > 0 && (
   <main className="max-w-7xl mx-auto p-8">
 
-    {/* ✅ GLOBAL HEADER */}
-    <div className="mb-6 bg-black text-white p-4 rounded-2xl">
-      <div className="text-sm">High Risk: {globalIntel.high}</div>
-      <div className="text-sm">Medium Risk: {globalIntel.medium}</div>
-      <div className="text-sm">Entities: {globalIntel.total}</div>
-    </div>
     {/* TAB BUTTONS */}
     <div className="flex flex-wrap gap-2 mb-10 bg-slate-200 p-2 rounded-3xl shadow-inner overflow-x-auto border-2 border-slate-300">
       <TabBtn active={activeTab === 'audit'} onClick={() => setActiveTab('audit')} label="Shipment Ledger" />
@@ -611,7 +605,12 @@ ${totalRisk > 0.7 ? "HIGH RISK" : totalRisk > 0.4 ? "MEDIUM RISK" : "LOW RISK"}
         {generateNarrative(stats, fraudStats, ersData || {})}
       </p>
     </div>
-
+    {/* ✅ GLOBAL HEADER */}
+    <div className="mb-6 bg-black text-white p-4 rounded-2xl">
+      <div className="text-sm">High Risk: {globalIntel.high}</div>
+      <div className="text-sm">Medium Risk: {globalIntel.medium}</div>
+      <div className="text-sm">Entities: {globalIntel.total}</div>
+    </div>
     {/* 🔥 ERS PANEL */}
     <ERSPanel
       stats={stats}
