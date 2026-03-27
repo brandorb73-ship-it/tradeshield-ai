@@ -419,20 +419,16 @@ CLEAR
         </div>
       </nav>
 
-    {/* ✅ GLOBAL HEADER */}
-<div className="mb-6 bg-gradient-to-r from-red-900 via-black to-green-900 text-white p-5 rounded-2xl shadow-xl">
-  <div className="text-lg font-bold mb-2">Global Risk Overview</div>
-  <div className="flex gap-6 text-sm">
-    <div>🔴 High Risk: {globalIntel.high}</div>
-    <div>🟠 Medium Risk: {globalIntel.medium}</div>
-    <div>🟢 Entities: {globalIntel.total}</div>
-  </div>
-</div>
-
     {/* ✅ CONDITIONAL UI STARTS HERE */}
 {data.length > 0 && (
   <main className="max-w-7xl mx-auto p-8">
 
+    {/* ✅ GLOBAL HEADER */}
+    <div className="mb-6 bg-black text-white p-4 rounded-2xl">
+      <div className="text-sm">High Risk: {globalIntel.high}</div>
+      <div className="text-sm">Medium Risk: {globalIntel.medium}</div>
+      <div className="text-sm">Entities: {globalIntel.total}</div>
+    </div>
     {/* TAB BUTTONS */}
     <div className="flex flex-wrap gap-2 mb-10 bg-slate-200 p-2 rounded-3xl shadow-inner overflow-x-auto border-2 border-slate-300">
       <TabBtn active={activeTab === 'audit'} onClick={() => setActiveTab('audit')} label="Shipment Ledger" />
