@@ -34,6 +34,7 @@ export default function useERS(stats) {
 
 return {
   name,
+  role: s.role || (s.isExporter ? "exporter" : "importer"),
   shipments: s.shipments || s.count || 0,
   anomalies: self + hs + price,
   ersScore: Number(final.toFixed(1)),
