@@ -288,24 +288,41 @@ const analyzeFraud = (rawData) => {
 
     // D. Build Entity Risk Profiles
     [exp, imp].forEach(e => {
-      if (!entityStats[e]) {
-        entityStats[e] = { 
-          self: 0, hs: 0, price: 0, density: 0, transactions: 0, priceAnomaly: 0,
-          isExporter: false, isImporter: false 
-        };
-      }
+if (!entityStats[e]) {
+  entityStats[e] = { 
+    self: 0,
+    hs: 0,
+    price: 0,
+    density: 0,
+
+    // ✅ REQUIRED FOR ERS
+    mlRisk: 0,
+    shellRisk: 0,
+    ringScore: 0,
+    cycleScore: 0,
+
+    // ✅ IMPORTANT
+    shipments: 0,
+
+    isExporter: false,
+    isImporter: false 
+  };
+}
     });
 
     entityStats[exp].isExporter = true;
     entityStats[imp].isImporter = true;
 if (exp === imp) {
-  entityStats[exp].transactions++; // self trade = 1
+  entityStats[exp].shipments += 1; // ✅ no double count
 } else {
-  entityStats[exp].transactions++;
-  entityStats[imp].transactions++;
+  entityStats[exp].shipments += 1;
+  entityStats[imp].shipments += 1;
 }
 
-    if (r._isPrice) { entityStats[exp].priceAnomaly++; entityStats[imp].priceAnomaly++; }
+ if (r._isPrice) { 
+  entityStats[exp].price++; 
+  entityStats[imp].price++; 
+}
     if (r._isSelf) { entityStats[exp].self++; }
     if (r._isHS) { entityStats[exp].hs++; entityStats[imp].hs++; }
     if (r._isDensityAnomaly) { entityStats[exp].density++; entityStats[imp].density++; }
@@ -322,10 +339,18 @@ if (exp === imp) {
   try { fraudProb = calculateFraudProbability(cleanedData, intelLayer); } catch(e){ console.error("Prob Engine Error:", e); }
 
   // Merge external risk scores into EntityStats
-  Object.keys(entityStats).forEach(e => {
-    if (mlScores[e]) entityStats[e].mlRisk = mlScores[e];
-    if (rings.find(r => r?.includes?.(e))) entityStats[e].ringScore = (entityStats[e].ringScore || 0) + 1;
-  });
+Object.keys(entityStats).forEach(e => {
+  entityStats[e].mlRisk = mlScores?.[e] || 0;
+
+  if (rings.some(r => r?.includes?.(e))) {
+    entityStats[e].ringScore += 20; // stronger signal
+  }
+
+  if (cycles.some(c => c?.includes?.(e))) {
+    entityStats[e].cycleScore += 20;
+  }
+});
+
 // --- NEW: MASS BALANCE CALCULATION ---
 const massBalance = {};
 cleanedData.forEach(r => {
