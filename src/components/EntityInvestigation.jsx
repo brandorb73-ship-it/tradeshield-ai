@@ -38,8 +38,7 @@ export default function EntityInvestigation({
 }) {
   const narrative = generateEntityNarrative(profile);
 
-  const ers = profile?.ers || {};
-  const summary = profile?.summary || {};
+   const summary = profile?.summary || {};
 
   return (
     <div
@@ -72,8 +71,8 @@ export default function EntityInvestigation({
           <div className="grid grid-cols-2 gap-4">
             <div className="p-4 rounded-xl bg-slate-100">
               <p className="text-xs text-slate-500">ERS Score</p>
-              <p className={`text-2xl font-bold ${getTextColor(ers?.total || 0)}`}>
-                {ers?.total || 0}
+              <p className={`text-2xl font-bold $getTextColor(profile?.ersScore || 0)
+{profile?.ersScore || 0}
               </p>
             </div>
 
@@ -91,14 +90,14 @@ export default function EntityInvestigation({
               Risk Breakdown
             </h3>
 
-            <BreakdownBar label="Self Trade" value={ers?.self} />
-            <BreakdownBar label="HS Risk" value={ers?.hs} />
-            <BreakdownBar label="Price Risk" value={ers?.price} />
-            <BreakdownBar label="Density" value={ers?.density} />
-            <BreakdownBar label="ML Risk" value={ers?.mlRisk} />
-            <BreakdownBar label="Shell Risk" value={ers?.shellRisk} />
-            <BreakdownBar label="Ring Score" value={ers?.ringScore} />
-            <BreakdownBar label="Cycle Score" value={ers?.cycleScore} />
+<BreakdownBar label="Self Trade" value={profile?.breakdown?.self || 0} />
+<BreakdownBar label="HS Risk" value={profile?.breakdown?.hs || 0} />
+<BreakdownBar label="Price Risk" value={profile?.breakdown?.price || 0} />
+<BreakdownBar label="Density" value={profile?.breakdown?.density || 0} />
+<BreakdownBar label="ML Risk" value={profile?.breakdown?.mlRisk || 0} />
+<BreakdownBar label="Shell Risk" value={profile?.breakdown?.shellRisk || 0} />
+<BreakdownBar label="Ring Score" value={profile?.breakdown?.ringScore || 0} />
+<BreakdownBar label="Cycle Score" value={profile?.breakdown?.cycleScore || 0} />
           </div>
 
           {/* 🔥 ACTIVITY SUMMARY */}
