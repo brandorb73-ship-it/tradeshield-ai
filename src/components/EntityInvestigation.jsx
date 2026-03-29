@@ -68,21 +68,57 @@ export default function EntityInvestigation({
         <div className="p-5 overflow-y-auto space-y-6">
 
           {/* 🔥 SCORE CARDS */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="p-4 rounded-xl bg-slate-100">
-              <p className="text-xs text-slate-500">ERS Score</p>
-              <p className={`text-2xl font-bold $getTextColor(profile?.ersScore || 0)
-{profile?.ersScore || 0}
-              </p>
-            </div>
+        <div className="grid grid-cols-2 gap-4">
+  {/* ERS SCORE */}
+  <div className="p-4 rounded-xl bg-slate-100">
+    <p className="text-xs text-slate-500 mb-1">ERS Score</p>
 
-            <div className="p-4 rounded-xl bg-slate-100">
-              <p className="text-xs text-slate-500">Network Risk</p>
-              <p className={`text-2xl font-bold ${getTextColor(mastermind?.score || 0)}`}>
-                {mastermind?.score || 0}
-              </p>
-            </div>
-          </div>
+    <div className="flex items-center gap-2">
+      <p className={`text-2xl font-bold ${getTextColor(profile?.ersScore || 0)}`}>
+        {profile?.ersScore || 0}
+      </p>
+
+      <span className={`text-xs font-bold px-2 py-1 rounded-full ${
+        (profile?.ersScore || 0) >= 70
+          ? "bg-red-100 text-red-600"
+          : (profile?.ersScore || 0) >= 40
+          ? "bg-orange-100 text-orange-600"
+          : "bg-green-100 text-green-600"
+      }`}>
+        {(profile?.ersScore || 0) >= 70
+          ? "HIGH RISK"
+          : (profile?.ersScore || 0) >= 40
+          ? "MEDIUM"
+          : "LOW"}
+      </span>
+    </div>
+  </div>
+
+  {/* NETWORK SCORE */}
+  <div className="p-4 rounded-xl bg-slate-100">
+    <p className="text-xs text-slate-500 mb-1">Network Risk</p>
+
+    <div className="flex items-center gap-2">
+      <p className={`text-2xl font-bold ${getTextColor(mastermind?.score || 0)}`}>
+        {mastermind?.score || 0}
+      </p>
+
+      <span className={`text-xs font-bold px-2 py-1 rounded-full ${
+        (mastermind?.score || 0) >= 70
+          ? "bg-red-100 text-red-600"
+          : (mastermind?.score || 0) >= 40
+          ? "bg-orange-100 text-orange-600"
+          : "bg-green-100 text-green-600"
+      }`}>
+        {(mastermind?.score || 0) >= 70
+          ? "HIGH"
+          : (mastermind?.score || 0) >= 40
+          ? "MEDIUM"
+          : "LOW"}
+      </span>
+    </div>
+  </div>
+</div>
 
           {/* 🔥 RISK BREAKDOWN */}
           <div>
