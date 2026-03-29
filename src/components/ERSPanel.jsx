@@ -46,11 +46,11 @@ export default function ERSPanel({ stats }) {
   const entities = ersData || [];
 
   // ✅ Step 4: Filter by role
-  const filteredEntities = entities.filter((e) =>
-    view === "exporter"
-      ? e.role === "exporter"
-      : e.role === "importer"
-  );
+const filteredEntities = entities.filter(e =>
+  view === "exporter"
+    ? e.role === "exporter" || e.role === "both"
+    : e.role === "importer" || e.role === "both"
+);
 
   return (
     <div className="p-4">
