@@ -36,7 +36,12 @@ export default function ERSPanel({ stats }) {
   const [selected, setSelected] = useState(null);
 
   const entities = ersData || [];
-
+const [view, setView] = useState("exporter");
+  const filteredEntities = entities.filter(e =>
+  view === "exporter"
+    ? e.role === "exporter"
+    : e.role === "importer"
+);
   return (
     <div className="p-4">
       <h2 className="text-2xl font-bold mb-6">Trade Intelligence Panel</h2>
