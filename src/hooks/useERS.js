@@ -15,7 +15,10 @@ export default function useERS(stats) {
       const shellRisk = num(s.shellRisk);
       const ringScore = num(s.ringScore);
       const cycleScore = num(s.cycleScore);
-      const total = num(s.total) || 1;
+     const total = Math.max(
+  1,
+  self + hs + price + density + mlRisk + shellRisk + ringScore + cycleScore
+);
 
       const raw =
         self * 20 +
