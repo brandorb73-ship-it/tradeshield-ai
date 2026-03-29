@@ -85,11 +85,12 @@ const mastermindData = useMastermind(stats);
 const globalIntel = useMemo(() => {
   const entities = Object.values(ersData || {});
 
-  const high = entities.filter(e => (e?.ers?.total || 0) > 70).length;
-  const medium = entities.filter(e => {
-    const score = e?.ers?.total || 0;
-    return score > 40 && score <= 70;
-  }).length;
+const high = entities.filter(e => (e?.ersScore || 0) > 70).length;
+
+const medium = entities.filter(e => {
+  const score = e?.ersScore || 0;
+  return score > 40 && score <= 70;
+}).length;
 
   return {
     high,
@@ -328,6 +329,15 @@ if (exp === imp) {
     if (r._isDensityAnomaly) { entityStats[exp].density++; entityStats[imp].density++; }
   });
 
+  Object.keys(entityStats).forEach(e => {
+  if (entityStats[e].isExporter && entityStats[e].isImporter) {
+    entityStats[e].role = "both";
+  } else if (entityStats[e].isExporter) {
+    entityStats[e].role = "exporter";
+  } else {
+    entityStats[e].role = "importer";
+  }
+});
   // --- PASS 3: EXTERNAL ENGINES ---
   let intelLayer = {}, rings = [], cycles = [], shells = [], corridors = {}, mlScores = {}, fraudProb = 0;
 
