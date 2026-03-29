@@ -594,17 +594,17 @@ ${totalRisk > 0.7 ? "HIGH RISK" : totalRisk > 0.4 ? "MEDIUM RISK" : "LOW RISK"}
   <main className="max-w-7xl mx-auto p-8 space-y-6">
 
     {/* 🔥 AI FORENSIC SUMMARY */}
-    <div className="bg-gradient-to-r from-slate-900 to-blue-900 text-white p-6 rounded-2xl shadow-lg">
-      <div className="flex items-center gap-3 mb-3">
-        <Brain size={24} />
-        <h2 className="text-lg font-bold uppercase tracking-wide">
-          AI Intelligence Brief
-        </h2>
-      </div>
-      <p className="text-sm leading-relaxed opacity-90">
-        {generateNarrative(stats, fraudStats, ersData || {})}
-      </p>
-    </div>
+<div className="bg-blue-100 p-6 rounded-xl border border-blue-400 mt-6 text-gray-900">
+  <div className="flex items-center gap-3 mb-3">
+    <Brain size={28} className="text-blue-600" />
+    <h2 className="text-xl font-bold uppercase">
+      AI Forensic Intelligence
+    </h2>
+  </div>
+  <div className="text-sm leading-relaxed">
+    {generateNarrative(stats, fraudStats, ersData || {})}
+  </div>
+</div>
     {/* ✅ GLOBAL HEADER */}
     <div className="mb-6 bg-black text-white p-4 rounded-2xl">
       <div className="text-sm">High Risk: {globalIntel.high}</div>
