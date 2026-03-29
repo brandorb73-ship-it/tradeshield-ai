@@ -29,22 +29,30 @@ export default function useERS(stats) {
 
       const final = Math.min(100, raw / total);
 
-      return {
-        name,
-        shipments: s.transactions || 0,
-        anomalies: self + hs + price,
-        ersScore: Number(final.toFixed(1)),
-        breakdown: {
-          self,
-          hs,
-          price,
-          density,
-          mlRisk,
-          shellRisk,
-          ringScore,
-          cycleScore,
-        },
-      };
+return {
+  name,
+  shipments: s.shipments || s.count || 0,
+  anomalies: self + hs + price,
+  ersScore: Number(final.toFixed(1)),
+
+  summary: {
+    totalShipments: s.shipments || s.count || 0,
+    selfTrades: self,
+    hsIssues: hs,
+    priceIssues: price,
+  },
+
+  breakdown: {
+    self,
+    hs,
+    price,
+    density,
+    mlRisk,
+    shellRisk,
+    ringScore,
+    cycleScore,
+  },
+};
     }).sort((a, b) => b.ersScore - a.ersScore);
   }, [stats]);
 }
