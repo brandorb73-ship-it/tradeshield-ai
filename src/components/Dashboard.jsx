@@ -251,12 +251,17 @@ const analyzeFraud = (rawData) => {
     brandBaselines[b] = brandTotals[b].weight > 0 ? brandTotals[b].amount / brandTotals[b].weight : 0;
   });
 
-  // --- PASS 2: FORENSIC ATTRIBUTION ---
 // --- PASS 2: FORENSIC ATTRIBUTION ---
 cleanedData.forEach(r => {
-  const expKey = `${r.exporter}__EXPORTER`;
-  const impKey = `${r.importer}__IMPORTER`;
-  const baseExp = r.exporter;
+const exporter = r.Exporter;
+const importer = r.Importer;
+
+// safety guard
+if (!exporter || !importer) return;
+
+const expKey = `${exporter}__EXPORTER`;
+const impKey = `${importer}__IMPORTER`;
+const baseExp = exporter;
 
   const brand = r.Brand;
   const hs = r["HS Code"];
@@ -313,7 +318,7 @@ cleanedData.forEach(r => {
   });
 
   // E. SHIPMENTS + SELF TRADE
-  if (r.exporter === r.importer) {
+  if (exporter === importer) {
     entityStats[expKey].shipments += 1;
     entityStats[impKey].shipments += 1;
 
