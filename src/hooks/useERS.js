@@ -5,6 +5,8 @@ export default function useERS(stats) {
     const entities = stats?.entityStats ?? {};
 
     return Object.entries(entities).map(([name, s]) => {
+   const cleanName = name.split("__")[0];
+   const role = name.includes("__EXPORTER") ? "exporter" : "importer";
       const num = (v) => Number(v) || 0;
 
       const self = num(s.self);
@@ -33,14 +35,8 @@ export default function useERS(stats) {
       const final = Math.min(100, raw / total);
 
 return {
-  name,
-    // ✅ ADD THIS BLOCK
-  role:
-    s.isExporter && s.isImporter
-      ? "both"
-      : s.isExporter
-      ? "exporter"
-      : "importer",
+  name: cleanName,
+  role,
   shipments: s.shipments || s.count || 0,
   anomalies: self + hs + price,
   ersScore: Number(final.toFixed(1)),
