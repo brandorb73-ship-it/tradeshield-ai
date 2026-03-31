@@ -252,92 +252,95 @@ const analyzeFraud = (rawData) => {
   });
 
   // --- PASS 2: FORENSIC ATTRIBUTION ---
-  cleanedData.forEach(r => {
-    const exp = r.Exporter;
-    const imp = r.Importer;
-    const brand = r.Brand;
-    const hs = r["HS Code"];
+// --- PASS 2: FORENSIC ATTRIBUTION ---
+cleanedData.forEach(r => {
+  const expKey = `${r.exporter}__EXPORTER`;
+  const impKey = `${r.importer}__IMPORTER`;
+  const baseExp = r.exporter;
 
-    // A. Price Deviation
-    const unitPrice = r._pricePerKg;
-    const median = brandBaselines[brand] || 0;
-    r._isPrice = median > 0 && (unitPrice > median * 1.3 || unitPrice < median * 0.7);
+  const brand = r.Brand;
+  const hs = r["HS Code"];
 
-    // B. HS Consistency Check
-    if (!brandToHS[brand]) brandToHS[brand] = hs;
-    r._isHS = brandToHS[brand] !== hs;
+  // A. Price Deviation
+  const unitPrice = r._pricePerKg;
+  const median = brandBaselines[brand] || 0;
+  r._isPrice = median > 0 && (unitPrice > median * 1.3 || unitPrice < median * 0.7);
 
-    // C. Circular Trade Accumulation
-   if (r._isSelf) {
-  if (!selfTradeData[exp]) {
-    selfTradeData[exp] = { 
-      amount: 0, 
-      weight: 0, 
-      count: 0, 
-      countries: new Set(), // Using Sets to keep list unique
-      brands: new Set() 
-    };
-}
-  selfTradeData[exp].amount += r["Amount($)"];
-  selfTradeData[exp].weight += r["Weight(Kg)"];
-  selfTradeData[exp].count += 1;
-  selfTradeData[exp].countries.add(r["Origin Country"]);
-  selfTradeData[exp].countries.add(r["Destination Country"]);
-  selfTradeData[exp].brands.add(r.Brand);
-  totalCircularVolume += r["Amount($)"];
-}
+  // B. HS Consistency
+  if (!brandToHS[brand]) brandToHS[brand] = hs;
+  r._isHS = brandToHS[brand] !== hs;
 
-    // D. Build Entity Risk Profiles
-    [exp, imp].forEach(e => {
-if (!entityStats[e]) {
-  entityStats[e] = { 
-    self: 0,
-    hs: 0,
-    price: 0,
-    density: 0,
+  // C. Circular Trade
+  if (r._isSelf) {
+    if (!selfTradeData[baseExp]) {
+      selfTradeData[baseExp] = {
+        amount: 0,
+        weight: 0,
+        count: 0,
+        countries: new Set(),
+        brands: new Set()
+      };
+    }
 
-    // ✅ REQUIRED FOR ERS
-    mlRisk: 0,
-    shellRisk: 0,
-    ringScore: 0,
-    cycleScore: 0,
+    selfTradeData[baseExp].amount += r["Amount($)"];
+    selfTradeData[baseExp].weight += r["Weight(Kg)"];
+    selfTradeData[baseExp].count += 1;
+    selfTradeData[baseExp].countries.add(r["Origin Country"]);
+    selfTradeData[baseExp].countries.add(r["Destination Country"]);
+    selfTradeData[baseExp].brands.add(r.Brand);
 
-    // ✅ IMPORTANT
-    shipments: 0,
+    totalCircularVolume += r["Amount($)"];
+  }
 
-    isExporter: false,
-    isImporter: false 
-  };
-}
-    });
+  // D. ENTITY INIT
+  [expKey, impKey].forEach(e => {
+    if (!entityStats[e]) {
+      entityStats[e] = {
+        name: e.split("__")[0],
+        role: e.includes("EXPORTER") ? "exporter" : "importer",
 
-    entityStats[exp].isExporter = true;
-    entityStats[imp].isImporter = true;
-if (exp === imp) {
-  entityStats[exp].shipments += 1; // ✅ no double count
-} else {
-  entityStats[exp].shipments += 1;
-  entityStats[imp].shipments += 1;
-}
-
- if (r._isPrice) { 
-  entityStats[exp].price++; 
-  entityStats[imp].price++; 
-}
-    if (r._isSelf) { entityStats[exp].self++; }
-    if (r._isHS) { entityStats[exp].hs++; entityStats[imp].hs++; }
-    if (r._isDensityAnomaly) { entityStats[exp].density++; entityStats[imp].density++; }
+        shipments: 0,
+        self: 0,
+        hs: 0,
+        price: 0,
+        density: 0,
+        mlRisk: 0,
+        shellRisk: 0,
+        ringScore: 0,
+        cycleScore: 0,
+      };
+    }
   });
 
-  Object.keys(entityStats).forEach(e => {
-  if (entityStats[e].isExporter && entityStats[e].isImporter) {
-    entityStats[e].role = "both";
-  } else if (entityStats[e].isExporter) {
-    entityStats[e].role = "exporter";
+  // E. SHIPMENTS + SELF TRADE
+  if (r.exporter === r.importer) {
+    entityStats[expKey].shipments += 1;
+    entityStats[impKey].shipments += 1;
+
+    entityStats[expKey].self += 1;
+    entityStats[impKey].self += 1;
   } else {
-    entityStats[e].role = "importer";
+    entityStats[expKey].shipments += 1;
+    entityStats[impKey].shipments += 1;
+  }
+
+  // F. ANOMALIES
+  if (r._isPrice) {
+    entityStats[expKey].price += 1;
+    entityStats[impKey].price += 1;
+  }
+
+  if (r._isHS) {
+    entityStats[expKey].hs += 1;
+    entityStats[impKey].hs += 1;
+  }
+
+  if (r._isDensityAnomaly) {
+    entityStats[expKey].density += 1;
+    entityStats[impKey].density += 1;
   }
 });
+
   // --- PASS 3: EXTERNAL ENGINES ---
   let intelLayer = {}, rings = [], cycles = [], shells = [], corridors = {}, mlScores = {}, fraudProb = 0;
 
