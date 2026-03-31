@@ -1,34 +1,34 @@
 export function generateEntityNarrative(profile) {
   if (!profile) return "No intelligence available.";
 
- const { summary = {}, breakdown = {}, ersScore = 0 } = profile;
+  const { summary = {}, ersScore = 0, breakdown = {} } = profile;
 
   const issues = [];
 
-  if ((summary.hsIssues || 0) > 5)
+  if ((summary.hsIssues || 0) > 10)
     issues.push(`repeated HS mismatches (${summary.hsIssues})`);
 
-  if ((summary.priceIssues || 0) > 5)
+  if ((summary.priceIssues || 0) > 10)
     issues.push(`abnormal pricing patterns (${summary.priceIssues})`);
 
-  if ((summary.selfTrades || 0) > 0)
+  if ((summary.selfTrades || 0) > 5)
     issues.push(`self-trading behaviour (${summary.selfTrades})`);
 
-if ((breakdown.ringScore || 0) > 10)
+  if ((breakdown.ringScore || 0) > 20)
     issues.push(`network clustering indicating coordinated activity`);
 
-if ((breakdown.cycleScore || 0) > 10)
+  if ((breakdown.cycleScore || 0) > 20)
     issues.push(`cyclical trade flows suggesting round-tripping`);
 
-  if (issues.length === 0)
-    return "Entity shows low-risk trade behaviour with no significant anomalies detected.";
-  if (ersScore >= 70)
-  issues.push("high composite risk score");
+  if (ersScore >= 70) {
+    return `High-risk entity identified due to ${issues.join(", ")}. Immediate investigation recommended.`;
+  }
 
-if (ersScore >= 40 && ersScore < 70)
-  issues.push("moderate composite risk exposure");
+  if (ersScore >= 40) {
+    return `Moderate risk detected with indicators including ${issues.join(", ")}. Further monitoring advised.`;
+  }
 
-  return `Entity shows elevated risk due to ${issues.join(", ")}.`;
+  return "Entity shows low-risk trade behaviour with no significant anomalies detected.";
 }
 
 
